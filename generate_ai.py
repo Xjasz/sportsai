@@ -46,20 +46,20 @@ DEFAULT_ACTIVATIONS = ['relu','sigmoid','softmax','linear','selu','softplus','sw
 DEFAULT_TARGET_MINMAX = {DEFAULT_TARGETS[0]:[1,16,14,40],DEFAULT_TARGETS[1]:[1,6,4,15],DEFAULT_TARGETS[2]:[1,6,4,15]}
 DEFAULT_CONF_RANGE = [2,4]
 DEFAULT_CAT_RANGE = [48,1024]
-DEFAULT_BATCH_RANGE = [256,2048]
-DEFAULT_UNITS_RANGE = [[48,2048],[48,1024]]
-DEFAULT_DROPOUTS_RANGE = [.01,.60]
-DEFAULT_LEARNRATE_RANGE = [0.0001,.01]
-DEFAULT_EPOCH_RANGE = [10,100]
+DEFAULT_BATCH_RANGE = [128,4096]
+DEFAULT_UNITS_RANGE = [[24,4096],[24,2048]]
+DEFAULT_DROPOUTS_RANGE = [.01,.70]
+DEFAULT_LEARNRATE_RANGE = [0.00001,.1]
+DEFAULT_EPOCH_RANGE = [15,150]
 DEFAULT_L2_RANGE = [0.0,0.0001]
 CURRENT_DAY = datetime.today()
 CURRENT_YEAR = datetime.today().year
 #######################################################
-DEFAULT_TRAIN_STARTS = [2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015]
+DEFAULT_TRAIN_STARTS = [2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018]
 if rns.use_seasons:
-    DEFAULT_VALID_STARTS = [CURRENT_YEAR - 5,CURRENT_YEAR - 4,CURRENT_YEAR -3]
-    DEFAULT_TEST_STARTS = [CURRENT_YEAR - 2,CURRENT_YEAR - 1]
-    DEFAULT_PRED_STARTS = [(CURRENT_DAY - relativedelta(months=1)).strftime('%Y-%m-%d')]
+    DEFAULT_VALID_STARTS = [CURRENT_YEAR - 3,CURRENT_YEAR - 2]
+    DEFAULT_TEST_STARTS = [CURRENT_YEAR - 1]
+    DEFAULT_PRED_STARTS = [(CURRENT_DAY - relativedelta(weeks=3)).strftime('%Y-%m-%d')]
 else:
     DEFAULT_VALID_STARTS = [(CURRENT_DAY - relativedelta(years=5)).strftime('%Y-%m-%d'),
                             (CURRENT_DAY - relativedelta(years=4)).strftime('%Y-%m-%d'),
@@ -73,7 +73,9 @@ else:
     DEFAULT_PRED_STARTS = [(CURRENT_DAY - relativedelta(months=1)).strftime('%Y-%m-%d')]
 #######################################################
 DEFAULT_IS_HOMESTARTER_AMPLIFY = [1,10,1,10]
-DEFAULT_LEARNER_RANGES = [[0.7, 0.9, 1.0, 1.2],[1.1, 1.3, 1.4, 1.6],[1.65, 1.85, 2.15, 2.45],[0.6, 0.7, 0.8, 0.9],[0.35, 0.55, 0.6, 0.7],[0.2, 0.3, 0.35, 0.5],[0.7, 0.8, 1.2, 1.3]]
+
+DEFAULT_LEARNER_RANGES = [[0.6, 0.8, .95, 1.15],[1.05, 1.25, 1.45, 1.7],[1.65, 1.85, 2.15, 2.45],[0.55, 0.65, 0.85, 0.95],
+                          [0.25, 0.45, 0.55, 0.75],[0.1, 0.25, 0.4, 0.6],[0.6, 0.9, 1.1, 1.4]]
 DEFAULT_FEATURES = [
     ################  IGNORING  ####################################
     # ,'GAMEDATEINT','BIRTHDATEINT','BACKTOBACKGAME','WEEK_PLAYTIME','DAYS_OUT','DISTANCE','TLOSS', 'OWIN','GAMES_OUT'
@@ -171,13 +173,15 @@ else:
     TEST_START_YEAR_USED = [(CURRENT_DAY - relativedelta(months=2)).strftime('%Y-%m-%d')]
     PRED_START_DATE_USED = [(CURRENT_DAY - relativedelta(months=1)).strftime('%Y-%m-%d')]
 #######################################################
-MAX_CATPART_USED = 500
+MAX_CATPART_USED = 600
 CONFIDENCE_USED = 3
 HOME_START_AMPLIFY = [DEFAULT_IS_HOMESTARTER_AMPLIFY[0],DEFAULT_IS_HOMESTARTER_AMPLIFY[2]]
-LEARNERRANGE_USED = [[0.8, 1.1],[1.25, 1.45],[1.75, 2.25],[0.65, 0.85],[0.45, 0.65],[0.25, 0.4],[0.75, 1.25]]
+# OLD_LEARNERRANGE_USED = [[0.8, 1.1],[1.25, 1.45],[1.75, 2.25],[0.65, 0.85],[0.45, 0.65],[0.25, 0.4],[0.75, 1.25]]
+LEARNERRANGE_USED = [[0.6, 1.3],[1.15, 1.55],[1.55, 2.55],[0.45, 0.95],[0.35, 0.75],[0.15, 0.5],[0.65, 1.55]]
 FILTERS_USED = {'POSITION': POSITION_USED, 'MINAVG': MINMAX_USED[0], 'MAXAVG': MINMAX_USED[1]}
 MODEL_LAYERS_USED = {'LAYER_1': {'ACTIVATION': ACTIVATIONS_USED[0],'UNITS': UNITS_USED[0], 'DROPOUT': DROPOUTS_USED[0], 'L2_USED': L2_USED[0]},'LAYER_2': {'ACTIVATION': ACTIVATIONS_USED[1],'UNITS': UNITS_USED[1], 'DROPOUT': DROPOUTS_USED[1], 'L2_USED': L2_USED[1]},'LAYER_3': {'ACTIVATION': ACTIVATIONS_USED[2],'UNITS': 1, 'DROPOUT': -1, 'L2_USED': -1}}
 PREDICTION_OUTPUT_COLUMNS = []
+ALL_DATAFRAME = pd.read_csv(gls.ALL_FINAL)
 
 MAIN_STATE = {'TARGET_COLUMN': TARGET_USED,'MAIN_FILTERS': FILTERS_USED,'MODEL_SHUFFLE_DATA': SHUFFLE_USED,'MODEL_BATCH_SIZE': BATCHSIZE_USED,'MAX_CATPART':MAX_CATPART_USED,'BATCHNORM_USED':BATCHNORM_USED,
               'MODEL_LEARNING_RATE': LEARNING_RATE_USED,'TRAIN_EPOCH_COUNT': EPOCH_COUNT_USED,'CONFIDENCE_CHECKS': CONFIDENCE_USED,
@@ -197,7 +201,7 @@ LOADED_STATES = [{"TARGET_COLUMN":"REB","MAIN_FILTERS":{"POSITION":"ALL","MINAVG
     ,{"TARGET_COLUMN":"PTS","MAIN_FILTERS":{"POSITION":"ALL","MINAVG":9,"MAXAVG":-1},"MODEL_SHUFFLE_DATA":True,"MODEL_BATCH_SIZE":"1305","MAX_CATPART":"295","MODEL_LEARNING_RATE":0.0012123595505617979,"TRAIN_EPOCH_COUNT":"12","CONFIDENCE_CHECKS":"3","AI_SAVE_STATE":True,"HOME_START_AMPLIFY":[3,6],"RESET_STATE_ON_NEWRUN":True,"TRAIN_START_YEAR":2007,"VALID_START_YEAR":2021,"TEST_START_YEAR":2022,"PRED_START_DATE":"2024-11-01","MODEL_LAYERS":{"LAYER_1":{"ACTIVATION":"sigmoid","UNITS":257,"DROPOUT":0.47000000000000003},"LAYER_2":{"ACTIVATION":"relu","UNITS":377,"DROPOUT":0.2},"LAYER_3":{"ACTIVATION":"relu","UNITS":1,"DROPOUT":-1}},"CATEGORY_COLUMNS":["START_POSITION","OFFICIAL2","AGE","HEIGHT","COUNTRY","OPP_PLAYER_ID","SEASON"],"FEATURE_COLUMNS":["IS_HOME","YEARS_IN_TEAM","IS_STARTING","OPP_DISTANCE","LAST_GAME_DAYS","TWIN","OLOSS","GAMES_IN","GAMES_CONT","GAMES_START","AVG_MIN","RT3_MIN","RT9_MIN","AVG_PTS","RT3_PTS","RT5_PTS","RT9_PTS","AVG_REB","RT3_REB","AVG_AST","RT3_AST","RT3_FGM","AVG_FGA","RT3_FGA","AVG_FG3M","RT3_FG3M","RT3_FG3A","AVG_FTM","RT3_FTM","AVG_FTA","RT3_FTA","RTZ_REB","RTZ_AST","RTZ_FGM","RTZ_FGA","RTZ_FG3M","RTZ_FG3A","RTZ_FTM","RTZ_FTA","PREV_PTS","PREV_AST","PREV_REB","PREV_MIN","PREV_FGA","PREV_FGM","PREV_FTA","PREV_FG3A","PREV_FG3M","LOSSES_B","DISTANCE_B","GAMES_OUT_B","OPP_WINS_B","OWIN_B","DAYS_OUT_B","BACKTOBACKGAME_B","WEEK_PLAYTIME_B","ALTITUDE_B","OPP_LAST_GAME_DAYS_B","OPP_BACKTOBACKGAME","OPP_WEEK_PLAYTIME","OPP_DEF_PTS1","OPP_DEF_PTS5","OPP_DEF_PTS9","OPP_DEF_PTSAVG","OPP_DEF_REB1","OPP_DEF_REB3","OPP_DEF_REBAVG","OPP_DEF_AST1","OPP_DEF_AST3","OPP_DEF_ASTAVG","TEAM_OUT","OPP_OUT","MAX_PTS","MAX_MIN","PREV_PF","RT3_PF","AVG_PF","PREV_STL","RT3_STL","AVG_STL","PREV_BLK","OPP_PREV_PF_B","OPP_RT3_PF_B","OPP_PREV_STL_B","OPP_RT3_STL_B","OPP_AVG_STL_B","OPP_PREV_BLK_B","OPP_AVG_BLK_B","OPP_DEF_PREVRANK_B","OPP_DEF_RT3RANK_B","OPP_DEF_AVGRANK_B","MAX_FGA","MAX_FGM","MAX_FTA","MAX_FTM","MAX_FG3A","MAX_FG3M","TEAM_CENTERS_IN_B","TEAM_FORWARDS_IN_B","TEAM_GUARDS_IN_B","OPP_CENTERS_IN_B","OPP_FORWARDS_IN_B","OPP_GUARDS_IN_B"],"PREDICTION_OUTPUT_COLUMNS":["SEASON","GAME_ID","PLAYER_ID","GAME_DATE","TEAM_NAME","PLAYER_NAME","AVG_PTS","RTZ_PTS","RT3_PTS","RT5_PTS","RT9_PTS","PREV_PTS","TEAM_OUT","OPP_OUT","OPP_PLAYER_ID","OPP_PLAYER_NAME","OPP_DEF_PTS1","OPP_DEF_PTS3","OPP_DEF_PTSAVG","WEEK_PLAYTIME","OPP_WEEK_PLAYTIME","LAST_GAME_DAYS","OPP_LAST_GAME_DAYS","START_POSITION","DISTANCE","ALTITUDE","IS_HOME","OPP_DEF_PREVRANK","OPP_DEF_RT3RANK","OPP_DEF_AVGRANK","LAST_PTS"],"LEARNERRANGE_USED":[[0.8862998893155283,1.035603899600525],[1.2437994233658478,1.5733091205117218],[1.8204325228733473,2.423824163699136],[0.6056021081182787,0.8779342636402696],[0.474707069145694,0.6126979743688145],[0.2305457629631285,0.4917499853283813],[0.7589425104255332,1.2687482235319232]],"EPOCH_LEARN_STATES":[{"EPOCH":0,"LEARN_RATE":0.0012123595505617979,"CURRENT_LOSS":0.0},{"EPOCH":1,"LEARN_RATE":0.0012123595505617979,"CURRENT_LOSS":175.14971923828125},{"EPOCH":2,"LEARN_RATE":0.0012123595505617979,"CURRENT_LOSS":68.23552703857422},{"EPOCH":3,"LEARN_RATE":0.0024209536610144597,"CURRENT_LOSS":55.45309066772461},{"EPOCH":4,"LEARN_RATE":0.0051245232562877885,"CURRENT_LOSS":51.97819900512695},{"EPOCH":5,"LEARN_RATE":0.006758634569127571,"CURRENT_LOSS":50.72761535644531},{"EPOCH":6,"LEARN_RATE":0.009848252215117672,"CURRENT_LOSS":49.977935791015625},{"EPOCH":7,"LEARN_RATE":0.009960604122591199,"CURRENT_LOSS":49.6505241394043},{"EPOCH":8,"LEARN_RATE":0.009984982557935784,"CURRENT_LOSS":49.464019775390625},{"EPOCH":0,"LEARN_RATE":0.0012123595224693418,"CURRENT_LOSS":0.0},{"EPOCH":1,"LEARN_RATE":0.0012123595224693418,"CURRENT_LOSS":164.7959442138672},{"EPOCH":2,"LEARN_RATE":0.0012123595224693418,"CURRENT_LOSS":65.21603393554688},{"EPOCH":3,"LEARN_RATE":0.002750190906226635,"CURRENT_LOSS":54.375938415527344},{"EPOCH":4,"LEARN_RATE":0.0060975137166678905,"CURRENT_LOSS":51.92042922973633},{"EPOCH":5,"LEARN_RATE":0.009488517418503761,"CURRENT_LOSS":50.629878997802734},{"EPOCH":6,"LEARN_RATE":0.012522517703473568,"CURRENT_LOSS":49.7063102722168},{"EPOCH":7,"LEARN_RATE":0.011211687698960304,"CURRENT_LOSS":49.480987548828125},{"EPOCH":8,"LEARN_RATE":0.010239989496767521,"CURRENT_LOSS":49.09011459350586},{"EPOCH":9,"LEARN_RATE":0.010474479757249355,"CURRENT_LOSS":48.97869873046875},{"EPOCH":0,"LEARN_RATE":0.0012123595224693418,"CURRENT_LOSS":0.0},{"EPOCH":1,"LEARN_RATE":0.0012123595224693418,"CURRENT_LOSS":179.6542510986328},{"EPOCH":2,"LEARN_RATE":0.0012123595224693418,"CURRENT_LOSS":67.46993255615234},{"EPOCH":3,"LEARN_RATE":0.002402817364782095,"CURRENT_LOSS":56.2615966796875},{"EPOCH":4,"LEARN_RATE":0.005363052245229483,"CURRENT_LOSS":52.35047912597656},{"EPOCH":5,"LEARN_RATE":0.007948559708893299,"CURRENT_LOSS":50.30698776245117},{"EPOCH":6,"LEARN_RATE":0.010885805822908878,"CURRENT_LOSS":49.725860595703125},{"EPOCH":7,"LEARN_RATE":0.009782332926988602,"CURRENT_LOSS":49.260169982910156},{"EPOCH":8,"LEARN_RATE":0.009858348406851292,"CURRENT_LOSS":49.172183990478516}],"RUN_TIME_DATE":"2024-03-16_17-38-34","TOP_PATH":"C:\\Files\\source\\current\\home\\sportsai/data/ai/top/26.11_2024-03-16_17-38-34_FORWARD_PTS/","EVAL_LOSS":0.0,"PRED_CORRECT_COUNT":59,"PRED_TOTAL_COUNT":226,"PRED_PERCENTAGE":26.10619469026549}]
 
 
-def run_loop(stop_index = 100):
+def run_loop(stop_index = 1000):
     counter = 0
     while counter < stop_index:
         counter += 1
@@ -549,21 +553,6 @@ def create_compile_model(_nums_layer,_cats_layer):
     _nn_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE_USED), loss='mse',metrics='mae')
     return _nn_model
 
-
-# OLD CREATE
-    # for layer_name, layer_params in MODEL_LAYERS_USED.items():
-    #     if layer_params['UNITS'] != 1:
-    #         if layer_params['L2_USED'] != -1:
-    #             x = tf.keras.layers.Dense(layer_params['UNITS'], activation=layer_params['ACTIVATION'], kernel_regularizer= tf.keras.regularizers.L2(layer_params['L2_USED']))(x)
-    #         else:
-    #             x = tf.keras.layers.Dense(layer_params['UNITS'], activation=layer_params['ACTIVATION'])(x)
-    #         if BATCHNORM_USED:
-    #             x = tf.keras.layers.BatchNormalization()(x)
-    #         if layer_params['DROPOUT'] != -1:
-    #             x = tf.keras.layers.Dropout(layer_params['DROPOUT'])(x)
-    #     else:
-    #         output = tf.keras.layers.Dense(layer_params['UNITS'], activation=layer_params['ACTIVATION'])(x)
-
 def predict_with_uncertainty(model, pred_group, n_iter=100):
     mnu.debug_print("predict_with_uncertainty...",0)
     preds = []
@@ -591,6 +580,37 @@ def filter_data(current_df):
     return current_df
 
 def generate_category_features(all_dataframe, cat_feats, train_ind, valid_ind, test_ind, pred_ind):
+    mnu.debug_print("generate_category_features...", 0)
+    cat_groups = {'train': [], 'valid': [], 'test': [], 'pred': [], 'input': []}
+    train_mask = train_ind.values if isinstance(train_ind, pd.Series) else train_ind
+    valid_mask = valid_ind.values if isinstance(valid_ind, pd.Series) else valid_ind
+    test_mask  = test_ind.values  if isinstance(test_ind, pd.Series)  else test_ind
+    pred_mask  = pred_ind.values  if isinstance(pred_ind, pd.Series)  else pred_ind
+    for item in cat_feats:
+        mnu.debug_print(f'Generating Category: {item}', 0)
+        category_series = all_dataframe[item].astype(str)
+        # unique_categories: array of distinct values
+        # encoded_indices: int code per row, 0..category_size-1
+        unique_categories, encoded_indices = np.unique(category_series, return_inverse=True)
+        category_size = len(unique_categories)
+        output_size = int(min(np.ceil(category_size / 2), MAX_CATPART_USED))
+        encoded_indices = encoded_indices.astype('int32').reshape(-1, 1)
+        train_vals = encoded_indices[train_mask]
+        valid_vals = encoded_indices[valid_mask]
+        test_vals  = encoded_indices[test_mask]
+        pred_vals  = encoded_indices[pred_mask]
+        mnu.debug_print(f'{item} PROPERTIES -> category_size:{category_size} | output_size:{output_size} | 'f'Train:{len(train_vals)} | Valid:{len(valid_vals)} | Test:{len(test_vals)} | Pred:{len(pred_vals)}',0)
+        cat_groups['train'].append(train_vals)
+        cat_groups['valid'].append(valid_vals)
+        cat_groups['test'].append(test_vals)
+        cat_groups['pred'].append(pred_vals)
+        inp_cat = tf.keras.layers.Input(shape=(1,), dtype='int32', name=f'{item}_input')
+        emb_cat = tf.keras.layers.Embedding(input_dim=category_size + 1, output_dim=output_size, name=item)(inp_cat)
+        layer_cat = tf.keras.layers.Flatten()(emb_cat)
+        cat_groups['input'].append([layer_cat, inp_cat])
+    return [cat_groups[group] for group in ['train', 'valid', 'test', 'pred', 'input']]
+
+def generate_category_features_shit(all_dataframe, cat_feats, train_ind, valid_ind, test_ind, pred_ind):
     mnu.debug_print("generate_category_features...",0)
     cat_groups  = {'train': [], 'valid': [], 'test': [], 'pred': [], 'input': []}
     for item in cat_feats:
@@ -617,10 +637,10 @@ def generate_category_features(all_dataframe, cat_feats, train_ind, valid_ind, t
 
 def set_state_values(_nn_model, scaler, season_file):
     mnu.debug_print("set_state_values...",0)
-    invalid_min_percentage = 15.0
-    prediction_min_percentage = 10.0
+    invalid_min_percentage = 25.0
+    prediction_min_percentage = 08.0
     invalid_value = 1
-    min_unique_guess_count = 5
+    min_unique_guess_count = 4
     pred_correct_cnt = (season_file['CORRECT'] == 1).sum()
     pred_total_cnt = len(season_file)
     pred_pct = pred_correct_cnt / pred_total_cnt * 100
@@ -674,13 +694,13 @@ def set_state_values(_nn_model, scaler, season_file):
             mnu.debug_print(f"An error occurred: {e}")
         season_file.to_csv(season_file_path, index=False)
     elif pred_percentage < prediction_min_percentage:
-        mnu.debug_print(f'Below Minimum Ignoring - MinimumPredictionPercentage:{prediction_min_percentage} CurrentPredictionPercentage:{formatted_short}% at RunDate:{run_date}')
+        mnu.debug_print(f'%%%%%%%%%%%%%%%------------> Below Minimum Ignoring - MinimumPredictionPercentage:{prediction_min_percentage} CurrentPredictionPercentage:{formatted_short}% at RunDate:{run_date}')
     elif invalids_pct >= invalid_min_percentage:
-        mnu.debug_print(f'Invalid percentage to high - MinimumInvalidPercentage:{invalid_min_percentage} CurrentInvalidPercentage:{invalids_pct}% at RunDate:{run_date}')
+        mnu.debug_print(f'%%%%%%%%%%%%%%%------------> Invalid percentage to high - MinimumInvalidPercentage:{invalid_min_percentage} CurrentInvalidPercentage:{invalids_pct}% at RunDate:{run_date}')
     elif unique_pred_guess_cnt <= min_unique_guess_count:
-        mnu.debug_print(f'Not enough unique guesses MinimumGuessCount:{min_unique_guess_count} CurrentGuessCount:({unique_pred_guess_cnt}) at RunDate:{run_date}')
+        mnu.debug_print(f'%%%%%%%%%%%%%%%------------> Not enough unique guesses MinimumGuessCount:{min_unique_guess_count} CurrentGuessCount:({unique_pred_guess_cnt}) at RunDate:{run_date}')
     else:
-        mnu.debug_print(f'Below TopPreds Ignoring - Percentage:({formatted_short}) at RunDate:{run_date}')
+        mnu.debug_print(f'%%%%%%%%%%%%%%%------------> Below TopPreds Ignoring - Percentage:({formatted_short}) at RunDate:{run_date}')
 
 def main_process():
     #################################################################################################
@@ -688,6 +708,7 @@ def main_process():
     #################################################################################################
     mnu.debug_print("AI Process Start....")
     start_time = time.time()
+    all_dataframe = ALL_DATAFRAME
     all_dataframe = pd.read_csv(gls.ALL_FINAL)
     ########################################################
     # all_dataframe['IS_HOME'] = all_dataframe['IS_HOME'].apply(lambda x: HOME_START_AMPLIFY[0] if x == 1 else x)

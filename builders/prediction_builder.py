@@ -51,7 +51,6 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
             if t1 == tt1 and t2 is tt2:
                 item2['game_time'] = item1['game_time']
                 break
-
     for event in evt_data:
         t1, t2 = event['home_team']['name'], event['away_team']['name']
         homedf, awaydf = None, None
@@ -74,7 +73,6 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
                 print(f"previous_invalids:\n{previous_invalids}")
                 homedf,awaydf = homedf.copy(),awaydf.copy()
                 break
-
         homedf['PLAYER_NAME'] = homedf['PLAYER_NAME'].apply(unidecode)
         awaydf['PLAYER_NAME'] = awaydf['PLAYER_NAME'].apply(unidecode)
         e_gid = event['game_id']
@@ -100,8 +98,6 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
             homedf['OFFICIAL2'] = ref2_id
             awaydf['OFFICIAL1'] = ref1_id
             awaydf['OFFICIAL2'] = ref2_id
-        # awaydf.loc[:, 'OFFICIAL1'] = homedf.iloc[0]['OFFICIAL1']
-        # awaydf.loc[:, 'OFFICIAL2'] = homedf.iloc[0]['OFFICIAL2']
         combined_df = pd.concat([homedf, awaydf], ignore_index=True)
         combined_df.loc[:, 'GAME_ID'] = e_gid
         combined_df.loc[:, 'GAME_DATE'] = rns.prediction_date
@@ -163,6 +159,8 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
 
 def set_postion_status(df, player):
     p_name, p_position, p_status = player['name'], player['position'], player['status']
+    if p_name == 'Giannis G. Antetokounmpo':
+        p_name = 'Giannis Antetokounmpo'
     if p_name in df['PLAYER_NAME'].values:
         new_position = '' if 'Inactive' in p_status else 'F' if p_position in ['SF', 'PF'] else 'G' if p_position in ['SG', 'PG'] else 'C' if p_position == 'C' else 'B'
         new_status = 'OUT' if 'Inactive' in p_status else ''

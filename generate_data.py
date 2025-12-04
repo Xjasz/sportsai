@@ -21,7 +21,7 @@ pd.set_option('display.width', None)
 # SET 'run_from_start_to_finish' to 'TRUE' to overwrite season gamelogs.
 # SET 'current_season_only' to 'TRUE' to overwrite current season gamelogs.
 #########################################################################################################################################
-OUT_KEYWORDS_SET = {'INJ', 'NOT WITH TEAM', 'MWT', 'DNT', 'DID NOT TRAVEL', 'NWT', 'SUSPENSION', 'PERSONAL', 'INACTIVE', 'DND', 'DID NOT DRESS'}
+OUT_KEYWORDS_SET = {'INJ', 'NOT WITH TEAM', 'MWT', 'DNT', 'DID NOT TRAVEL', 'NWT', 'SUSPENSION', 'PERSONAL', 'INACTIVE', 'DND', 'DID NOT DRESS', 'DNP_TRADE'}
 
 def optimized_rolling_averages(df, col, count):
     return df.groupby(['SEASON', 'PLAYER_ID'])[col].transform(lambda x: x.shift().rolling(window=count, min_periods=1).mean())
@@ -358,7 +358,7 @@ def track_player_out_events():
                         elif start_position == 'B':
                             player_data[4] = player_data[4] + 1
                         else:
-                            print(f'Error Unknown position... player_id: {player_id} position: {start_position}')
+                            raise ValueError(f'Error Unknown position... player_id: {player_id} position: {start_position}')
                     if keyword != '':
                         player_data[1] = player_data[1] + 1
                         player_data[2] = 0
@@ -389,7 +389,7 @@ def set_distance_altitude():
                 away_team_abbrev = df_log[df_log['IS_HOME'] == 0]['TEAM_NAME'].iloc[0]
                 specific_distance = distance_df[(distance_df['HOME'] == home_team_abbrev) & (distance_df['AWAY'] == away_team_abbrev)]
                 if len(specific_distance) < 1:
-                    print(f'Error distance not found for: {home_team_abbrev} and {away_team_abbrev}...')
+                    raise ValueError(f'Error distance not found for: {home_team_abbrev} and {away_team_abbrev}...')
                 else:
                     distance_val = specific_distance['DISTANCE'].values[0]
                     df_log['DISTANCE'] = df_log.apply(lambda x: 0 if x['IS_HOME'] == 1 else distance_val, axis=1)
@@ -463,13 +463,14 @@ def set_positions_and_cleanup():
                 df_log = pd.read_csv(file_path)
                 merged_df = pd.merge(df_log, df_all_details[['PLAYER_ID', 'TEAM_ID', 'SEASON', 'POSITION']],on=['PLAYER_ID', 'TEAM_ID', 'SEASON'], how='left')
                 df_log['POSITION'] = merged_df['POSITION'].str.upper()
-                missing_position_rows = df_log[df_log['POSITION'].isna()]
-                missing_position_rows = missing_position_rows[missing_position_rows['COMMENT'].str.len() < 1]
+                missing_position_rows = df_log[df_log['POSITION'].isna() | (df_log['POSITION'].str.strip() == '')]
                 if not missing_position_rows.empty:
-                    game_id = missing_position_rows['GAME_ID'].iloc[0]
-                    print(f"Missing POSITIONS in GAME_ID: {game_id}")
-                    for _, row in missing_position_rows.iterrows():
-                        print(f"PLAYER_ID: {row['PLAYER_ID']}")
+                    missing_position_row_comments = missing_position_rows[missing_position_rows['COMMENT'].str.len() < 1]
+                    if not missing_position_row_comments.empty:
+                        game_id = missing_position_row_comments['GAME_ID'].iloc[0]
+                        for _, row in missing_position_row_comments.iterrows():
+                            print(f"Missing PLAYER_ID: {row['PLAYER_ID']}")
+                        raise ValueError(f"Error Missing POSITIONS in GAME_ID: {game_id}")
                 df_log.to_csv(file_path, index=False)
     print('set_positions_and_cleanup completed...')
 
@@ -483,12 +484,11 @@ def set_player_opponents():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
             if not glu.file_contains_value(file_path, 'MATCHED_OPPONENT'):
-                # try:
                 df_log = pd.read_csv(file_path)
                 df_log['MATCHED_OPPONENT'] = 0
                 ###### Match Centers
                 c_indices = df_log[df_log['START_POSITION'] == 'C'].index[:2]
-                count_C_positions = (df_log['START_POSITION'] == 'C').sum()
+                count_C_positions = (df_log['START_POSITION'].astype(str).str.strip().str.upper() == 'C').sum()
                 if count_C_positions != 2:
                     raise ValueError(f"Count of 'C' in START_POSITION is invalid: {count_C_positions}")
                 for src_col, dest_col in [('PLAYER_ID', 'OPP_PLAYER_ID'), ('PTS', 'DEF_PTS'), ('AST', 'DEF_AST'), ('REB', 'DEF_REB')]:
@@ -527,8 +527,6 @@ def set_player_opponents():
                 df_log.update(pos_df)
                 df_log.reset_index(inplace=True)
                 df_log.to_csv(file_path, index=False)
-                # except Exception as e:
-                #     print(f"Error processing {file_path}: {e}")
     print('set_player_opponents completed...')
 
 def set_out_totals():

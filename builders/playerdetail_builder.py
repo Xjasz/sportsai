@@ -20,9 +20,8 @@ print("Loading.... playerdetail_builder")
 #########################################################################################################################################
 ####  CREATE/UPDATE PLAYER DETAILS IN DIRECTORY -> '/DATA/PLAYER/DETAILS/'
 # Uses players from game_logs located in DIRECTORY -> '/DATA/GAME/'
-# SET 'update_active_players' to 'TRUE' to update players that are not retired.
+# SET 'rns.update_active_players_team' to 'TRUE' to update players that are not retired.
 #########################################################################################################################################
-update_active_players = False
 
 def calculate_years_in_team(group):
     group = group.sort_values('SEASON')
@@ -70,8 +69,10 @@ def fix_filenames():
             new_filename = f"{gls.DEFAULT_PLAYER_DETAIL_NAME}{player_id}_{player_name}{gls.DEFAULT_CSV_TYPENAME}"
             if filename != new_filename:
                 print(f"finalRename '{filename}' to '{new_filename}'")
-                os.rename(os.path.join(gls.PLAYER_DETAIL_DIR, filename),
-                          os.path.join(gls.PLAYER_DETAIL_DIR, new_filename))
+                if os.path.exists(os.path.join(gls.PLAYER_DETAIL_DIR, new_filename)):
+                    print(f"Removing already existing file '{new_filename}'")
+                    os.remove(os.path.join(gls.PLAYER_DETAIL_DIR, new_filename));
+                os.rename(os.path.join(gls.PLAYER_DETAIL_DIR, filename),os.path.join(gls.PLAYER_DETAIL_DIR, new_filename))
 
 def extract_players(game_log_dir):
     print('extract_players...')
@@ -95,7 +96,7 @@ def extract_players(game_log_dir):
     print(f"Players :{player_df}")
     return player_df
 
-def fetch_and_save_player_detail(player_item, update_active_players, current_all_players):
+def fetch_and_save_player_detail(player_item, current_all_players, force_update=False):
     pl_id = player_item[0]
     pl_name = player_item[1].replace(' ', '_').replace('.', '')
     detail_filepath = os.path.join(gls.PLAYER_DETAIL_DIR, f"{gls.DEFAULT_PLAYER_DETAIL_NAME}{pl_id}_{pl_name}{gls.DEFAULT_CSV_TYPENAME}")
@@ -104,7 +105,8 @@ def fetch_and_save_player_detail(player_item, update_active_players, current_all
     if os.path.exists(detail_filepath):
         det_df = pd.read_csv(detail_filepath)
         is_active = (det_df['RETIRED'] == 0).all()
-    if det_df is None or (update_active_players and is_active):
+    if det_df is None or (rns.update_active_players_team and is_active) or force_update:
+        time.sleep(2)
         print(f"Fetching detail for Player ID:{pl_id}  |  PlayerName: {pl_name}")
         player_details = commonplayerinfo.CommonPlayerInfo(player_id=pl_id, league_id_nullable='00').get_data_frames()[0]
         career_stats = playercareerstats.PlayerCareerStats(player_id=pl_id, league_id_nullable='00').get_data_frames()[0]
@@ -151,7 +153,6 @@ def fetch_and_save_player_detail(player_item, update_active_players, current_all
                 player_detail_data.loc[last_row_index, 'RETIRED'] = 0 if season_last_row == int(rns.prediction_season) else 0
                 player_detail_data.to_csv(detail_filepath, index=False)
                 print(f"Saved PlayerID: {pl_id} to {detail_filepath}")
-        time.sleep(2)
     if os.path.exists(detail_filepath):
         det_df = pd.read_csv(detail_filepath)
         last_row = det_df.iloc[-1]
@@ -174,7 +175,6 @@ def fetch_and_save_player_detail(player_item, update_active_players, current_all
 
 def removing_invalid_player(game_log_dir, player_id):
     print('removing_invalid_player...')
-    # entries = os.listdir(game_log_dir)
     print(f"Check directory {game_log_dir} -> for PlayerID: ({player_id})")
     for file_name in os.listdir(game_log_dir):
         directory = f'{gls.GAMES_DATA_DIR}{file_name}'
@@ -193,11 +193,11 @@ def create_player_details():
     current_season_dir = f'{gls.GAMES_DATA_DIR}{rns.prediction_season}/'
     player_df = extract_players(current_season_dir)
     player_df = mu.playername_log_to_detail(player_df)
-    print(f'Creating player details...  player_df size:{len(player_df)} update_active_players = {update_active_players}')
+    print(f'Creating player details...  player_df size:{len(player_df)} update_active_players_team = {rns.update_active_players_team}')
     for index, row in player_df.iterrows():
         player_id = row['PLAYER_ID']
         player_name = row['PLAYER_NAME']
-        fetch_and_save_player_detail((player_id, player_name), update_active_players, current_all_players)
+        fetch_and_save_player_detail((player_id, player_name), current_all_players)
     fix_filenames()
     fix_schools()
 
@@ -215,9 +215,5 @@ def delete_invalid_player_details():
         if os.path.isfile(file_path) and not is_ascii(filename):
             print(f"Deleting file: {filename}")
             os.remove(file_path)
-
-# create_player_details()
-# current_all_players = commonallplayers.CommonAllPlayers(is_only_current_season='1', league_id='00').get_data_frames()[0]
-# fetch_and_save_player_detail(('1641740', 'Jaylin Clark'), update_active_players, current_all_players)
 
 print("Loaded.... playerdetail_builder")

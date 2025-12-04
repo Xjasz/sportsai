@@ -131,8 +131,6 @@ def extract_players(game_element):
         status_span = player.find_element(By.CSS_SELECTOR, 'span[class*="DailyLineup_dlStatus"]')
         status = status_span.get_attribute("title")
         name = player.find_element(By.CSS_SELECTOR, 'span[class*="DailyLineup_dlName"]').text
-        # if 'Poeltl' in name:
-        #     name = name.replace('Poeltl', 'Poeltl')
         position = player.find_element(By.CSS_SELECTOR, 'span[class*="DailyLineup_dlPos"]').text
         if name not in players_dict:
             players_dict[name] = {'name': name, 'position': position, 'status': status}
