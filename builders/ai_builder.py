@@ -94,6 +94,8 @@ def set_int_dates():
 def reverse_backwards_linears():
     print('reverse_backwards_linears started...')
     all_dataframe = pd.read_csv(gls.ALL_FINAL)
+
+    # Aggregates you actually want
     all_dataframe['TEAM_ALLOUT'] = all_dataframe[['TEAM_DNP', 'TEAM_OUT']].sum(axis=1)
     all_dataframe['OPP_ALLOUT'] = all_dataframe[['OPP_DNP', 'OPP_OUT']].sum(axis=1)
     print('Sum (TEAM_ALLOUT,OPP_ALLOUT) are set...')
@@ -103,83 +105,60 @@ def reverse_backwards_linears():
     all_dataframe['OPP_DEF_AVGRANK'] = all_dataframe[['OPP_AVG_PF', 'OPP_AVG_STL', 'OPP_AVG_BLK']].sum(axis=1)
     print('Sum (OPP_DEF_PREVRANK,OPP_DEF_RT3RANK,OPP_DEF_AVGRANK) are set...')
 
-    altitude_back = all_dataframe['ALTITUDE'].max()
-    all_dataframe['ALTITUDE_B'] = altitude_back - all_dataframe['ALTITUDE'] + 1
-    losses_back = all_dataframe['LOSSES'].max()
-    all_dataframe['LOSSES_B'] = losses_back - all_dataframe['LOSSES'] + 1
-    distance_back = all_dataframe['DISTANCE'].max()
-    all_dataframe['DISTANCE_B'] = distance_back - all_dataframe['DISTANCE'] + 1
-    gamesout_back = all_dataframe['GAMES_OUT'].max()
-    all_dataframe['GAMES_OUT_B'] = gamesout_back - all_dataframe['GAMES_OUT'] + 1
-    oppwins_back = all_dataframe['OPP_WINS'].max()
-    all_dataframe['OPP_WINS_B'] = oppwins_back - all_dataframe['OPP_WINS'] + 1
-    tloss_back = all_dataframe['TLOSS'].max()
-    all_dataframe['TLOSS_B'] = tloss_back - all_dataframe['TLOSS'] + 1
-    owin_back = all_dataframe['OWIN'].max()
-    all_dataframe['OWIN_B'] = owin_back - all_dataframe['OWIN'] + 1
-    daysout_back = all_dataframe['DAYS_OUT'].max()
-    print('Reverse (ALTITUDE_B,LOSSES_B,DISTANCE_B,GAMES_OUT_B,OPP_WINS_B,TLOSS_B,OWIN_B) are set...')
+    # Stop flipping; just mirror original values so existing FEATURE_COLUMNS_USED still works
+    all_dataframe['ALTITUDE_B'] = all_dataframe['ALTITUDE']
+    all_dataframe['LOSSES_B'] = all_dataframe['LOSSES']
+    all_dataframe['DISTANCE_B'] = all_dataframe['DISTANCE']
+    all_dataframe['GAMES_OUT_B'] = all_dataframe['GAMES_OUT']
+    all_dataframe['OPP_WINS_B'] = all_dataframe['OPP_WINS']
+    all_dataframe['TLOSS_B'] = all_dataframe['TLOSS']
+    all_dataframe['OWIN_B'] = all_dataframe['OWIN']
+    all_dataframe['DAYS_OUT_B'] = all_dataframe['DAYS_OUT']
+    all_dataframe['BACKTOBACKGAME_B'] = all_dataframe['BACKTOBACKGAME']
+    all_dataframe['WEEK_PLAYTIME_B'] = all_dataframe['WEEK_PLAYTIME']
+    all_dataframe['OPP_LAST_GAME_DAYS_B'] = all_dataframe['OPP_LAST_GAME_DAYS']
+    print('Mirror (ALTITUDE_B,LOSSES_B,DISTANCE_B,GAMES_OUT_B,OPP_WINS_B,TLOSS_B,OWIN_B,'
+          'DAYS_OUT_B,BACKTOBACKGAME_B,WEEK_PLAYTIME_B,OPP_LAST_GAME_DAYS_B) are set...')
 
-    all_dataframe['DAYS_OUT_B'] = daysout_back - all_dataframe['DAYS_OUT'] + 1
-    backtoback_back = all_dataframe['BACKTOBACKGAME'].max()
-    all_dataframe['BACKTOBACKGAME_B'] = backtoback_back - all_dataframe['BACKTOBACKGAME'] + 1
-    variable_tomax = all_dataframe['WEEK_PLAYTIME'].max()
-    all_dataframe['WEEK_PLAYTIME_B'] = variable_tomax - all_dataframe['WEEK_PLAYTIME'] + 1
-    variable_tomax = all_dataframe['OPP_LAST_GAME_DAYS'].max()
-    all_dataframe['OPP_LAST_GAME_DAYS_B'] = variable_tomax - all_dataframe['OPP_LAST_GAME_DAYS'] + 1
-    print('Reverse (DAYS_OUT_B,BACKTOBACKGAME_B,WEEK_PLAYTIME_B,OPP_LAST_GAME_DAYS_B) are set...')
-
+    # Team position aggregates
     all_dataframe['TEAM_CENTERS_IN'] = all_dataframe[['TEAM_CENTER', 'TEAM_CENTER-FORWARD']].sum(axis=1)
     all_dataframe['TEAM_FORWARDS_IN'] = all_dataframe[['TEAM_FORWARD', 'TEAM_FORWARD-CENTER', 'TEAM_FORWARD-GUARD']].sum(axis=1)
     all_dataframe['TEAM_GUARDS_IN'] = all_dataframe[['TEAM_GUARD', 'TEAM_GUARD-FORWARD']].sum(axis=1)
-    variable_tomax = all_dataframe['TEAM_CENTERS_IN'].max()
-    all_dataframe['TEAM_CENTERS_IN_B'] = variable_tomax - all_dataframe['TEAM_CENTERS_IN'] + 1
-    variable_tomax = all_dataframe['TEAM_FORWARDS_IN'].max()
-    all_dataframe['TEAM_FORWARDS_IN_B'] = variable_tomax - all_dataframe['TEAM_FORWARDS_IN'] + 1
-    variable_tomax = all_dataframe['TEAM_GUARDS_IN'].max()
-    all_dataframe['TEAM_GUARDS_IN_B'] = variable_tomax - all_dataframe['TEAM_GUARDS_IN'] + 1
-    print('Reverse (TEAM_CENTERS_IN,TEAM_FORWARDS_IN,TEAM_GUARDS_IN,TEAM_CENTERS_IN_B,TEAM_FORWARDS_IN_B,TEAM_GUARDS_IN_B) are set...')
 
+    all_dataframe['TEAM_CENTERS_IN_B'] = all_dataframe['TEAM_CENTERS_IN']
+    all_dataframe['TEAM_FORWARDS_IN_B'] = all_dataframe['TEAM_FORWARDS_IN']
+    all_dataframe['TEAM_GUARDS_IN_B'] = all_dataframe['TEAM_GUARDS_IN']
+    print('Mirror (TEAM_CENTERS_IN,TEAM_FORWARDS_IN,TEAM_GUARDS_IN,_B variants) are set...')
+
+    # Opponent position aggregates
     all_dataframe['OPP_CENTERS_IN'] = all_dataframe[['OPP_CENTER', 'OPP_CENTER-FORWARD']].sum(axis=1)
     all_dataframe['OPP_FORWARDS_IN'] = all_dataframe[['OPP_FORWARD', 'OPP_FORWARD-CENTER', 'OPP_FORWARD-GUARD']].sum(axis=1)
     all_dataframe['OPP_GUARDS_IN'] = all_dataframe[['OPP_GUARD', 'OPP_GUARD-FORWARD']].sum(axis=1)
-    variable_tomax = all_dataframe['OPP_CENTERS_IN'].max()
-    all_dataframe['OPP_CENTERS_IN_B'] = variable_tomax - all_dataframe['OPP_CENTERS_IN'] + 1
-    variable_tomax = all_dataframe['OPP_FORWARDS_IN'].max()
-    all_dataframe['OPP_FORWARDS_IN_B'] = variable_tomax - all_dataframe['OPP_FORWARDS_IN'] + 1
-    variable_tomax = all_dataframe['OPP_GUARDS_IN'].max()
-    all_dataframe['OPP_GUARDS_IN_B'] = variable_tomax - all_dataframe['OPP_GUARDS_IN'] + 1
-    print('Reverse (OPP_CENTERS_IN,OPP_FORWARDS_IN,OPP_GUARDS_IN,OPP_CENTERS_IN_B,OPP_FORWARDS_IN_B,OPP_GUARDS_IN_B) are set...')
 
+    all_dataframe['OPP_CENTERS_IN_B'] = all_dataframe['OPP_CENTERS_IN']
+    all_dataframe['OPP_FORWARDS_IN_B'] = all_dataframe['OPP_FORWARDS_IN']
+    all_dataframe['OPP_GUARDS_IN_B'] = all_dataframe['OPP_GUARDS_IN']
+    print('Mirror (OPP_CENTERS_IN,OPP_FORWARDS_IN,OPP_GUARDS_IN,_B variants) are set...')
 
-    variable_tomax = all_dataframe['OPP_PREV_PF'].max()
-    all_dataframe['OPP_PREV_PF_B'] = variable_tomax - all_dataframe['OPP_PREV_PF'] + 1
-    variable_tomax = all_dataframe['OPP_RT3_PF'].max()
-    all_dataframe['OPP_RT3_PF_B'] = variable_tomax - all_dataframe['OPP_RT3_PF'] + 1
-    variable_tomax = all_dataframe['OPP_AVG_PF'].max()
-    all_dataframe['OPP_AVG_PF_B'] = variable_tomax - all_dataframe['OPP_AVG_PF'] + 1
-    variable_tomax = all_dataframe['OPP_PREV_STL'].max()
-    all_dataframe['OPP_PREV_STL_B'] = variable_tomax - all_dataframe['OPP_PREV_STL'] + 1
-    variable_tomax = all_dataframe['OPP_RT3_STL'].max()
-    all_dataframe['OPP_RT3_STL_B'] = variable_tomax - all_dataframe['OPP_RT3_STL'] + 1
-    variable_tomax = all_dataframe['OPP_AVG_STL'].max()
-    all_dataframe['OPP_AVG_STL_B'] = variable_tomax - all_dataframe['OPP_AVG_STL'] + 1
-    variable_tomax = all_dataframe['OPP_PREV_BLK'].max()
-    all_dataframe['OPP_PREV_BLK_B'] = variable_tomax - all_dataframe['OPP_PREV_BLK'] + 1
-    variable_tomax = all_dataframe['OPP_RT3_BLK'].max()
-    all_dataframe['OPP_RT3_BLK_B'] = variable_tomax - all_dataframe['OPP_RT3_BLK'] + 1
-    variable_tomax = all_dataframe['OPP_AVG_BLK'].max()
-    all_dataframe['OPP_AVG_BLK_B'] = variable_tomax - all_dataframe['OPP_AVG_BLK'] + 1
-    print('Reverse (OPP_PREV_PF,OPP_PREV_STL,OPP_PREV_BLK) are set...')
+    # Fouls/steals/blocks: keep direction, no flipping
+    all_dataframe['OPP_PREV_PF_B'] = all_dataframe['OPP_PREV_PF']
+    all_dataframe['OPP_RT3_PF_B'] = all_dataframe['OPP_RT3_PF']
+    all_dataframe['OPP_AVG_PF_B'] = all_dataframe['OPP_AVG_PF']
 
-    variable_tomax = all_dataframe['OPP_DEF_PREVRANK'].max()
-    all_dataframe['OPP_DEF_PREVRANK_B'] = variable_tomax - all_dataframe['OPP_DEF_PREVRANK'] + 1
-    variable_tomax = all_dataframe['OPP_DEF_RT3RANK'].max()
-    all_dataframe['OPP_DEF_RT3RANK_B'] = variable_tomax - all_dataframe['OPP_DEF_RT3RANK'] + 1
-    variable_tomax = all_dataframe['OPP_DEF_AVGRANK'].max()
-    all_dataframe['OPP_DEF_AVGRANK_B'] = variable_tomax - all_dataframe['OPP_DEF_AVGRANK'] + 1
-    print('Reverse (OPP_DEF_PREVRANK_B,OPP_DEF_RT3RANK_B,OPP_DEF_AVGRANK_B) are set...')
+    all_dataframe['OPP_PREV_STL_B'] = all_dataframe['OPP_PREV_STL']
+    all_dataframe['OPP_RT3_STL_B'] = all_dataframe['OPP_RT3_STL']
+    all_dataframe['OPP_AVG_STL_B'] = all_dataframe['OPP_AVG_STL']
 
+    all_dataframe['OPP_PREV_BLK_B'] = all_dataframe['OPP_PREV_BLK']
+    all_dataframe['OPP_RT3_BLK_B'] = all_dataframe['OPP_RT3_BLK']
+    all_dataframe['OPP_AVG_BLK_B'] = all_dataframe['OPP_AVG_BLK']
+    print('Mirror (OPP_PREV_PF/STL/BLK,_B variants) are set...')
+
+    # Defensive ranks mirrored
+    all_dataframe['OPP_DEF_PREVRANK_B'] = all_dataframe['OPP_DEF_PREVRANK']
+    all_dataframe['OPP_DEF_RT3RANK_B'] = all_dataframe['OPP_DEF_RT3RANK']
+    all_dataframe['OPP_DEF_AVGRANK_B'] = all_dataframe['OPP_DEF_AVGRANK']
+    print('Mirror (OPP_DEF_PREVRANK_B,OPP_DEF_RT3RANK_B,OPP_DEF_AVGRANK_B) are set...')
 
     all_dataframe.to_csv(gls.ALL_FINAL, index=False)
     print('reverse_backwards_linears completed...')
@@ -220,17 +199,6 @@ def set_game_active_positions():
     all_dataframe.to_csv(gls.ALL_FINAL, index=False)
     print('set_game_active_positions completed...')
 
-# def official_invalid_fix():
-#     all_dataframe = pd.read_csv(gls.ALL_FINAL)
-#     all_dataframe.sort_values(by=['PLAYER_ID', 'GAME_DATE'], inplace=True)
-#     all_dataframe.loc[all_dataframe['GAME_ID'] == 22400498, ['OFFICIAL1', 'OFFICIAL2']] = [202049, 1628951]
-#     all_dataframe.loc[all_dataframe['GAME_ID'] == 22400500, ['OFFICIAL1', 'OFFICIAL2']] = [202041, 203593]
-#     all_dataframe.loc[all_dataframe['GAME_ID'] == 22400499, ['OFFICIAL1', 'OFFICIAL2']] = [101284, 1151]
-#     all_dataframe.loc[all_dataframe['GAME_ID'] == 22400501, ['OFFICIAL1', 'OFFICIAL2']] = [1830, 202007]
-#     all_dataframe.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True, inplace=True)
-#     cols_to_remove = [col for col in all_dataframe.columns if 'OFFICIAL' in col and 'LAST' in col]
-#     all_dataframe.drop(columns=cols_to_remove, inplace=True)
-#     all_dataframe.to_csv(gls.ALL_FINAL, index=False)
 
 def create_official_past_totals():
     print('create_official_past_totals started...')
