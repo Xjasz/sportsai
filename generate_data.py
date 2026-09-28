@@ -160,7 +160,7 @@ def set_extra_stats(gl_df, gl_path):
         for player_id in gl_df['PLAYER_ID'].unique():
             player_index = gl_df['PLAYER_ID'] == player_id
             gl_df.loc[player_index, 'WEEK_PLAYTIME'] = gl_df.loc[player_index].set_index('GAME_DATE')['MIN'].rolling('7D').sum().values
-        gl_df['WEEK_PLAYTIME'].fillna(0, inplace=True)
+        gl_df['WEEK_PLAYTIME'] = gl_df['WEEK_PLAYTIME'].fillna(0)
         gl_df['WEEK_PLAYTIME'] = gl_df['WEEK_PLAYTIME'] - gl_df['MIN']
         change_made = True
     if 'IS_STARTING' not in gl_df.columns:
@@ -222,10 +222,10 @@ def set_opponent_def(df_log,file_path):
             for lag in [1, 3, 5, 9]:
                 column_name = f'OPP_{stat}{lag}'
                 df_log[column_name] = df_log.groupby(['OPP_PLAYER_ID'])[f'{stat}_PREV'].transform(lambda x: x.shift().rolling(window=lag, min_periods=1).mean().round(2))
-                df_log[column_name].fillna(0, inplace=True)
+                df_log[column_name] = df_log[column_name].fillna(0)
             avg_column_name = f'OPP_{stat}AVG'
             df_log[avg_column_name] = df_log.groupby(['OPP_PLAYER_ID'])[f'{stat}_PREV'].transform(lambda x: x.shift().expanding(min_periods=1).mean().round(2))
-            df_log[avg_column_name].fillna(0, inplace=True)
+            df_log[avg_column_name] = df_log[avg_column_name].fillna(0)
         df_log.drop(columns=[f'{stat}_PREV' for stat in stats], inplace=True)
         df_log.to_csv(file_path, index=False)
         print(f'Generated (OPP_DEF1_PTS,OPP_DEF1_AST,OPP_DEF1_REB) completed in {round(time.time() - start_time, 2)} seconds..')
@@ -438,8 +438,6 @@ def set_positions_and_cleanup():
         directory = f'{gls.GAMES_DATA_DIR}{item}/'
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
-            if '22400014' in file_name:
-                print('check....')
             if glu.file_contains_value(file_path, 'NICKNAME'):
                 df_log = pd.read_csv(file_path)
                 df_log.drop(['NICKNAME'], axis=1, inplace=True)

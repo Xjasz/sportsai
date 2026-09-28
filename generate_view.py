@@ -6,7 +6,7 @@ import pandas as pd
 from nba_api.stats.endpoints import leaguegamefinder
 from openpyxl.styles import PatternFill, Font, Alignment
 from openpyxl.utils import get_column_letter
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 import builders.gamelog_builder as glb
 import globals.global_settings as gls
@@ -95,8 +95,8 @@ def apply_odds_values():
             mys_us = gls.SPORTSAI_DBUSER
             mys_ps = gls.SPORTSAI_DBPASS
             engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
-            query = f"SELECT * FROM {mys_db}.sportsbook_odds WHERE OpenDate LIKE '%{rns.odds_date}%'"
-            result_df = pd.read_sql(query, engine)
+            query = text(f'SELECT * FROM {mys_db}.{gls.SPORTSBOOK_ODDS_TABLE} WHERE OpenDate LIKE :d')
+            result_df = pd.read_sql(query, engine, params={'d': f'%{rns.odds_date}%'})
             print("Odds data loaded from database.")
         except Exception as e:
             print(f"Database connection failed: {e}")
@@ -247,7 +247,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     print(f'Generated Excel file total rows {max_rows}')
 
 
-    print(f'Setting Ref Headers...')
+    print('Setting Ref Headers...')
     for col in range(67, 155):
         col_letter = get_column_letter(col)
         worksheet.column_dimensions[col_letter].width = 5
@@ -257,7 +257,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     yellow_columns = ['BO', 'BR', 'BU', 'BX', 'CA', 'CD']
     peach_columns = ['CG', 'CJ', 'CM', 'CP', 'CS', 'CV']
 
-    print(f'Setting Ref Columns...')
+    print('Setting Ref Columns...')
     for col in yellow_columns:
         for row in range(1, max_rows):
             cell = worksheet[f'{col}{row}']
@@ -267,7 +267,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
             cell = worksheet[f'{col}{row}']
             cell.fill = light_peach_fill
 
-    print(f'Setting Ref Value Columns...')
+    print('Setting Ref Value Columns...')
     worksheet['ED1'] = 'BELOW AVG'
     worksheet['EE1'] = 'ABOVE AVG'
     worksheet['EF1'] = 'MINIMUM'
@@ -283,7 +283,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     worksheet['EI2'] = 6
     worksheet['EJ2'] = 8
 
-    print(f'Setting Ref Calc Columns...')
+    print('Setting Ref Calc Columns...')
     worksheet['CY1'] = 'LOW4'
     worksheet['CZ1'] = 'HIGH4'
     worksheet['DA1'] = 'LOW12'
@@ -315,7 +315,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     for cell_reference in cells_to_align:
         worksheet[cell_reference].alignment = header_alignment
 
-    print(f'Adding Ref Formulas...')
+    print('Adding Ref Formulas...')
     add_multiple_formulas(worksheet, max_rows)
 
     print('Setup Sheet Headers...')

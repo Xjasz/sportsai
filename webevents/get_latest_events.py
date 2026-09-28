@@ -156,8 +156,8 @@ def find_sportsbook_games():
         lookup_url = f'{gls.SPORTSBOOK_API_URL}content-managed-page?currencyCode=USD&exchangeLocale=en_US&includePrices=true&language=en&regionCode=NAMERICA&timezone=America%2FNew_York&_ak=FhMFpcPWXMeyZxOx&page=CUSTOM&customPageId=nba'
         print(f'url: {lookup_url}')
         driver.get(lookup_url)
+        wait = WebDriverWait(driver, 5)
         if gls.BROWSER_TYPE == 'FIREFOX':
-            wait = WebDriverWait(driver, 5)
             view_raw_button = wait.until(EC.element_to_be_clickable((By.ID, 'rawdata-tab')))
             view_raw_button.click()
         time.sleep(2)

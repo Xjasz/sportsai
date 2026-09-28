@@ -1,6 +1,4 @@
 
-from builders import playerdetail_builder as pdb
-from nba_api.stats.endpoints import commonallplayers
 import pandas as pd
 from pathlib import Path
 

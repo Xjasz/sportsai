@@ -79,7 +79,7 @@ def create_games_from_logs():
 
 def set_int_dates():
     print('set_int_dates started...')
-    if not mu.file_contains_value(gls.ALL_FINAL, 'GAME_DATE_INT'):
+    if not mu.file_contains_value(gls.ALL_FINAL, 'GAMEDATEINT'):
         all_dataframe = pd.read_csv(gls.ALL_FINAL)
         date_columns = ['GAMEDATEINT', 'BIRTHDATEINT']
         all_dataframe['GAMEDATEINT'] = all_dataframe['GAME_DATE']
@@ -183,7 +183,6 @@ def set_game_active_positions():
     grouped = all_dataframe.groupby(['GAME_ID', 'TEAM_NAME', 'POSITION']).size().reset_index(name='count')
     pivot_table = grouped.pivot_table(index=['GAME_ID', 'TEAM_NAME'], columns='POSITION', values='count',fill_value=0).reset_index()
     pivot_table.columns = ['GAME_ID', 'TEAM_NAME'] + ['POSITION_' + str(col) for col in pivot_table.columns[2:]]
-    pivot_table.sort_values(by=['GAME_ID'], ascending=True)
     print(f'pivot_table size: {len(pivot_table)}')
     pivot_table = pivot_table.rename(columns=lambda x: x if x in ['GAME_ID', 'TEAM_NAME'] else 'TEAM_' + x[9:].upper())
     team_merge = all_dataframe.merge(pivot_table, how='left', on=['GAME_ID', 'TEAM_NAME'])
@@ -193,7 +192,6 @@ def set_game_active_positions():
     columns_to_drop = [col for col in tempdf.columns if'_OPP' in col and col.replace('_OPP', '') in pivot_table.columns]
     tempdf = tempdf.drop(columns=columns_to_drop)
     tempdf.columns = [col.replace('_OPP', '') for col in tempdf.columns]
-    tempdf.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True)
     all_dataframe = tempdf.copy()
     print(all_dataframe.head())
     all_dataframe.to_csv(gls.ALL_FINAL, index=False)
@@ -415,21 +413,20 @@ def build_combined_files():
     print("Final convert starting...")
     if os.path.exists(gls.ALL_FINAL):
         print(f'Loading ALL_FINAL: {gls.ALL_FINAL}')
-        pd.read_csv(gls.ALL_FINAL, dtype=mu.get_col_types(gls.ALL_FINAL))
     else:
         print(f'Generating ALL_FINAL: {gls.ALL_FINAL}')
         final_df = pd.read_csv(gls.ALL_COMBINED, dtype=mu.get_col_types(gls.ALL_COMBINED))
         if 'PLAYER_NAME_y' in final_df.columns:
-            print(f"final_df -> Removing: PLAYER_NAME_y")
+            print("final_df -> Removing: PLAYER_NAME_y")
             final_df = final_df.drop('PLAYER_NAME_y', axis=1)
         if 'PLAYER_NAME_x' in final_df.columns:
-            print(f"final_df -> Converting: PLAYER_NAME_x to PLAYER_NAME")
+            print("final_df -> Converting: PLAYER_NAME_x to PLAYER_NAME")
             final_df = final_df.rename(columns={'PLAYER_NAME_x': 'PLAYER_NAME'})
         if 'POSITION_y' in final_df.columns:
-            print(f"final_df -> Removing: POSITION_y")
+            print("final_df -> Removing: POSITION_y")
             final_df = final_df.drop('POSITION_y', axis=1)
         if 'POSITION_x' in final_df.columns:
-            print(f"final_df -> Converting: POSITION_x to POSITION")
+            print("final_df -> Converting: POSITION_x to POSITION")
             final_df = final_df.rename(columns={'POSITION_x': 'POSITION'})
         unique_positions = final_df['POSITION'].unique()
         print("Unique Positions:", unique_positions)

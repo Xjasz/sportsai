@@ -119,7 +119,6 @@ def find_upcoming_games() -> List[Dict[str, Any]]:
         "page": "CUSTOM",
         "customPageId": EVENT_TYPE,
     }
-    event_type = 'nba'
     url = SPORTSBOOK_API_URL + "content-managed-page"
     logger.info("GET upcoming games: %s", url)
     data = get_json(url, params=params)
@@ -280,9 +279,9 @@ def main() -> None:
         logger.info("No new data to check, stopping.")
         return
 
-    logger.info(f'Parsed upcoming events and saved: {outbound_odds}')
-    df_events = pd.DataFrame(all_extracted_data)
-    df_events.to_csv(outbound_odds, index=False)
+    logger.info(f'Parsed upcoming events and saved: {OUTBOUND_ODDS}')
+    df_events = pd.DataFrame(all_extracted)
+    df_events.to_csv(OUTBOUND_ODDS, index=False)
     uniquedates = df_events['OpenDate'].unique()
     formatted_dates = [date.strftime('%Y-%m-%d %H:%M:%S') for date in uniquedates]
     formatted_dates_str = ','.join([f"'{date}'" for date in formatted_dates])

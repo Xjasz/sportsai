@@ -133,7 +133,7 @@ def print_game_info(player_stats, team_stats, game_summary, inactive_players, of
 def create_all_games():
     all_games = pd.read_csv(gls.ALL_GAMES)
     games_df = all_games[all_games['CAPTURED'] == 0]
-    print(f'--------------------   DO NOT USE THIS   --------------------')
+    print('--------------------   DO NOT USE THIS   --------------------')
     print(f'Loaded Games to find... need {len(games_df)} games...')
     # for index, row in games_df.iterrows():
     #     game_id = row['GAME_ID']

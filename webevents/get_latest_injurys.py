@@ -18,14 +18,13 @@ def find_injury_news():
         service = FirefoxService(gls.GECKO_EXE_LOC)
         options = webdriver.FirefoxOptions()
         options.binary_location = gls.BROWSER_EXE_LOC
-    elif gls.BROWSER_TYPE == 'CHOME':
+    elif gls.BROWSER_TYPE == 'CHROME':
         service = Service(ChromeDriverManager().install())
         options = webdriver.ChromeOptions()
     options.add_argument("--log-level=3")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument(f'--user-data-dir={gls.BROWSER_PROFILE_DIR}')
-    options.add_argument('--headless')
     options.add_argument('--headless')
     options.add_argument("--window-size=0,0")
 
@@ -58,8 +57,7 @@ def find_injury_news():
                 name_to_check = parts[-1]
                 team_short = gls.TEAM_TOSHORT_MAPPER.get(name_to_check, None)
                 if team_short is None:
-                    print(f'Unknown Shortname for Team {team_name}')
-                    exit(0)
+                    raise ValueError(f'Unknown Shortname for Team {team_name}')
                 injuries_data.append({
                     'Team': team_name,
                     'Short Name': team_short,

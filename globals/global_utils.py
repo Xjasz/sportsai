@@ -124,7 +124,6 @@ def format_float(value):
 def read_from_config(key, val_type=0):
     config = configparser.ConfigParser()
     config.read(gls.CFG_FILE)
-    print_detail(key)
     if val_type == 0:
         return int(config['DEFAULT'].get(key, '0'))
     elif val_type == 1:

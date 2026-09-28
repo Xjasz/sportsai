@@ -181,7 +181,6 @@ LEARNERRANGE_USED = [[0.6, 1.3],[1.15, 1.55],[1.55, 2.55],[0.45, 0.95],[0.35, 0.
 FILTERS_USED = {'POSITION': POSITION_USED, 'MINAVG': MINMAX_USED[0], 'MAXAVG': MINMAX_USED[1]}
 MODEL_LAYERS_USED = {'LAYER_1': {'ACTIVATION': ACTIVATIONS_USED[0],'UNITS': UNITS_USED[0], 'DROPOUT': DROPOUTS_USED[0], 'L2_USED': L2_USED[0]},'LAYER_2': {'ACTIVATION': ACTIVATIONS_USED[1],'UNITS': UNITS_USED[1], 'DROPOUT': DROPOUTS_USED[1], 'L2_USED': L2_USED[1]},'LAYER_3': {'ACTIVATION': ACTIVATIONS_USED[2],'UNITS': 1, 'DROPOUT': -1, 'L2_USED': -1}}
 PREDICTION_OUTPUT_COLUMNS = []
-ALL_DATAFRAME = pd.read_csv(gls.ALL_FINAL)
 
 MAIN_STATE = {'TARGET_COLUMN': TARGET_USED,'MAIN_FILTERS': FILTERS_USED,'MODEL_SHUFFLE_DATA': SHUFFLE_USED,'MODEL_BATCH_SIZE': BATCHSIZE_USED,'MAX_CATPART':MAX_CATPART_USED,'BATCHNORM_USED':BATCHNORM_USED,
               'MODEL_LEARNING_RATE': LEARNING_RATE_USED,'TRAIN_EPOCH_COUNT': EPOCH_COUNT_USED,'CONFIDENCE_CHECKS': CONFIDENCE_USED,
@@ -238,6 +237,7 @@ def clear_mainstate():
 def load_state(l_state):
     global EPOCH_LEARN_STATES, AI_LEARNER, EVAL_LOSS, CURRENT_LOSS, PREDICTION_OUTPUT_COLUMNS, MAIN_STATE, FEATURE_USED, HOME_START_AMPLIFY,AI_SAVE_STATE, RESET_STATE_ON_NEWRUN
     global CATEGORY_USED,POSITION_USED,TARGET_USED,EPOCH_COUNT_USED,LEARNING_RATE_USED,DROPOUTS_USED,UNITS_USED,ACTIVATIONS_USED,MINMAX_USED,BATCHSIZE_USED,SHUFFLE_USED,TRAIN_START_YEAR_USED,VALID_START_YEAR_USED,TEST_START_YEAR_USED,PRED_START_DATE_USED,CONFIDENCE_USED,LEARNERRANGE_USED,FILTERS_USED,MODEL_LAYERS_USED,MAX_CATPART_USED,L2_USED
+    global BATCHNORM_USED
     mnu.debug_print("load_state...")
     MAIN_STATE = l_state
     EPOCH_COUNT_USED = int(MAIN_STATE['TRAIN_EPOCH_COUNT'])
@@ -610,31 +610,6 @@ def generate_category_features(all_dataframe, cat_feats, train_ind, valid_ind, t
         cat_groups['input'].append([layer_cat, inp_cat])
     return [cat_groups[group] for group in ['train', 'valid', 'test', 'pred', 'input']]
 
-def generate_category_features_shit(all_dataframe, cat_feats, train_ind, valid_ind, test_ind, pred_ind):
-    mnu.debug_print("generate_category_features...",0)
-    cat_groups  = {'train': [], 'valid': [], 'test': [], 'pred': [], 'input': []}
-    for item in cat_feats:
-        mnu.debug_print(f'Generating Category: {item}',0)
-        category_series = all_dataframe[item].astype(str)
-        unique_categories = np.unique(category_series)
-        category_size = len(unique_categories)
-        vocab_size = len({word for name in unique_categories for word in name.replace("'", "").split()})
-        maxlen = max(len(name.split()) for name in unique_categories)
-        output_size = int(min(np.ceil(category_size / 2), MAX_CATPART_USED))
-        cat_to_index = {cat: idx for idx, cat in enumerate(unique_categories)}
-        mnu.debug_print(f'{item} PROPERTIES -> category_size:{category_size} | vocab_size:{vocab_size} | maxlen:{maxlen} | output_size:{output_size}',0)
-        for subset_name, indices in zip(['train', 'valid', 'test', 'pred'], [train_ind, valid_ind, test_ind, pred_ind]):
-            subset_indices = [cat_to_index[cat] for cat in category_series[indices]]
-            encoded_cats = tf.keras.utils.to_categorical(subset_indices, num_classes=vocab_size)
-            padded_cats = tf.keras.preprocessing.sequence.pad_sequences(encoded_cats, maxlen=maxlen, padding='post', value=0.0)
-            mnu.debug_print(f'({subset_name.capitalize()}) -> {item} Size:{len(subset_indices)} | Encoded:{len(encoded_cats[0])} | Padded:{len(padded_cats[0])}', 0)
-            cat_groups[subset_name].append(padded_cats)
-        inp_cat = tf.keras.layers.Input(shape=(maxlen,))
-        emb_cat = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=output_size, input_length=maxlen, name=item)(inp_cat)
-        layer_cat = tf.keras.layers.Flatten()(emb_cat)
-        cat_groups['input'].append([layer_cat, inp_cat])
-    return [cat_groups[group] for group in ['train', 'valid', 'test', 'pred', 'input']]
-
 def set_state_values(_nn_model, scaler, season_file):
     mnu.debug_print("set_state_values...",0)
     invalid_min_percentage = 25.0
@@ -688,9 +663,9 @@ def set_state_values(_nn_model, scaler, season_file):
             json.dump(MAIN_STATE, f, indent=4, sort_keys=False,default=str)
         try:
             _nn_model.save(model_state_file)
-            _nn_model.save_weights(scaler_state_file)
-            pd.to_pickle(scaler, model_weights_file)
-        except OSError or Exception as e:
+            _nn_model.save_weights(model_weights_file)
+            pd.to_pickle(scaler, scaler_state_file)
+        except Exception as e:
             mnu.debug_print(f"An error occurred: {e}")
         season_file.to_csv(season_file_path, index=False)
     elif pred_percentage < prediction_min_percentage:
@@ -703,12 +678,12 @@ def set_state_values(_nn_model, scaler, season_file):
         mnu.debug_print(f'%%%%%%%%%%%%%%%------------> Below TopPreds Ignoring - Percentage:({formatted_short}) at RunDate:{run_date}')
 
 def main_process():
+    global EVAL_LOSS
     #################################################################################################
     ####################################      START PROCESS      ####################################
     #################################################################################################
     mnu.debug_print("AI Process Start....")
     start_time = time.time()
-    all_dataframe = ALL_DATAFRAME
     all_dataframe = pd.read_csv(gls.ALL_FINAL)
     ########################################################
     # all_dataframe['IS_HOME'] = all_dataframe['IS_HOME'].apply(lambda x: HOME_START_AMPLIFY[0] if x == 1 else x)
@@ -800,7 +775,7 @@ def main_process():
             _nn_model.save(gls.model_state_file)
             _nn_model.save_weights(gls.model_weights_file)
             pd.to_pickle(scaler, gls.scaler_state_file)
-        except OSError or Exception as e:
+        except Exception as e:
             mnu.debug_print(f"An error occurred: {e}")
     ########################################################
     mnu.debug_print("Evaluating Model...",0)

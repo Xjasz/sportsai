@@ -48,7 +48,7 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
         t1,t2 = item1['home_team'][1],item1['away_team'][1]
         for item2 in evt_data:
             tt1,tt2 = item2['home_team']['name'],item2['away_team']['name']
-            if t1 == tt1 and t2 is tt2:
+            if t1 == tt1 and t2 == tt2:
                 item2['game_time'] = item1['game_time']
                 break
     for event in evt_data:
@@ -87,8 +87,6 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
         awaydf.loc[:,'OPP_DISTANCE'] = 0
         TEAM_NAME = homedf.iloc[0]['TEAM_NAME']
         matching_row = off_data[off_data['GAME'].str.contains(TEAM_NAME, na=False)]
-        if e_gid == '22400492':
-            print('check....')
         if matching_row.empty:
             raise ValueError(f"GAME NOT FOUND ERROR FOR TEAM: {TEAM_NAME}")
         else:
