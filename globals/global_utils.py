@@ -227,7 +227,7 @@ def height_to_inches(height_str):
     try:
         feet, inches = height_str.split('-')
         return int(feet) * 12 + int(inches)
-    except:
+    except (ValueError, AttributeError):
         return None
 
 def ensure_correct_format(date_str):
