@@ -5,12 +5,11 @@ import pandas as pd
 import pytz
 import time
 import globals.global_settings as gls
+from webevents import browser
 from bs4 import BeautifulSoup
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.firefox.service import Service as FirefoxService
 
 print("Loading.... get_latest_events")
 
@@ -20,16 +19,7 @@ utc_timezone = pytz.timezone('UTC')
 est_timezone = pytz.timezone('US/Eastern')
 
 def scrape_game_officials():
-    service = FirefoxService(gls.GECKO_EXE_LOC)
-    options = webdriver.FirefoxOptions()
-    options.binary_location = gls.BROWSER_EXE_LOC
-    options.add_argument("--log-level=3")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument('--headless')
-    options.add_argument("--window-size=0,0")
-    options.add_argument(f'--user-data-dir={gls.BROWSER_PROFILE_DIR}')
-    browser_driver = webdriver.Firefox(service=service, options=options)
+    browser_driver = browser.build_driver()
     url = "https://www.rotowire.com/basketball/nba-lineups.php"
     browser_driver.get(url)
     wait = WebDriverWait(browser_driver, 10)
@@ -85,16 +75,7 @@ def scrape_game_officials():
     return game_officials
 
 def find_todays_nba_lineups():
-    service = FirefoxService(gls.GECKO_EXE_LOC)
-    options = webdriver.FirefoxOptions()
-    options.binary_location = gls.BROWSER_EXE_LOC
-    options.add_argument("--log-level=3")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument(f'--user-data-dir={gls.BROWSER_PROFILE_DIR}')
-    options.add_argument('--headless')
-    options.add_argument("--window-size=0,0")
-    browser_driver = webdriver.Firefox(service=service, options=options)
+    browser_driver = browser.build_driver()
     lineups_data = []
     with browser_driver as driver:
         lookup_url = 'https://www.nba.com/players/todays-lineups'
@@ -141,23 +122,14 @@ def extract_players(game_element):
     return player_list
 
 def find_sportsbook_games():
-    service = FirefoxService(gls.GECKO_EXE_LOC)
-    options = webdriver.FirefoxOptions()
-    options.binary_location = gls.BROWSER_EXE_LOC
-    options.add_argument("--log-level=3")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument(f'--user-data-dir={gls.BROWSER_PROFILE_DIR}')
-    options.add_argument('--headless')
-    options.add_argument("--window-size=0,0")
-    browser_driver = webdriver.Firefox(service=service, options=options)
+    browser_driver = browser.build_driver()
     extracted_data = []
     with browser_driver as driver:
         lookup_url = f'{gls.SPORTSBOOK_API_URL}content-managed-page?currencyCode=USD&exchangeLocale=en_US&includePrices=true&language=en&regionCode=NAMERICA&timezone=America%2FNew_York&_ak=FhMFpcPWXMeyZxOx&page=CUSTOM&customPageId=nba'
         print(f'url: {lookup_url}')
         driver.get(lookup_url)
+        wait = WebDriverWait(driver, 5)
         if gls.BROWSER_TYPE == 'FIREFOX':
-            wait = WebDriverWait(driver, 5)
             view_raw_button = wait.until(EC.element_to_be_clickable((By.ID, 'rawdata-tab')))
             view_raw_button.click()
         time.sleep(2)

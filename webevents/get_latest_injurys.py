@@ -1,38 +1,14 @@
 from bs4 import BeautifulSoup
 import pandas as pd
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium import webdriver
-from selenium.webdriver.firefox.service import Service as FirefoxService
 import time
 import globals.global_settings as gls
 from globals import global_utils as mu
+from webevents import browser
 
 print("Loading.... get_latest_injurys")
 
 def find_injury_news():
-    service = None
-    options = None
-    browser_driver = None
-    if gls.BROWSER_TYPE == 'FIREFOX':
-        service = FirefoxService(gls.GECKO_EXE_LOC)
-        options = webdriver.FirefoxOptions()
-        options.binary_location = gls.BROWSER_EXE_LOC
-    elif gls.BROWSER_TYPE == 'CHOME':
-        service = Service(ChromeDriverManager().install())
-        options = webdriver.ChromeOptions()
-    options.add_argument("--log-level=3")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument(f'--user-data-dir={gls.BROWSER_PROFILE_DIR}')
-    options.add_argument('--headless')
-    options.add_argument('--headless')
-    options.add_argument("--window-size=0,0")
-
-    if gls.BROWSER_TYPE == 'FIREFOX':
-        browser_driver = webdriver.Firefox(service=service, options=options)
-    elif gls.BROWSER_TYPE == 'CHROME':
-        browser_driver = webdriver.Chrome(service=service, options=options)
+    browser_driver = browser.build_driver()
     with browser_driver as driver:
         print(gls.ESPN_NBA_INJURY_URL)
         driver.get(gls.ESPN_NBA_INJURY_URL)
@@ -58,8 +34,7 @@ def find_injury_news():
                 name_to_check = parts[-1]
                 team_short = gls.TEAM_TOSHORT_MAPPER.get(name_to_check, None)
                 if team_short is None:
-                    print(f'Unknown Shortname for Team {team_name}')
-                    exit(0)
+                    raise ValueError(f'Unknown Shortname for Team {team_name}')
                 injuries_data.append({
                     'Team': team_name,
                     'Short Name': team_short,
