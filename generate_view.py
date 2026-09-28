@@ -6,12 +6,13 @@ import pandas as pd
 from nba_api.stats.endpoints import leaguegamefinder
 from openpyxl.styles import PatternFill, Font, Alignment
 from openpyxl.utils import get_column_letter
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 import builders.gamelog_builder as glb
 import globals.global_settings as gls
 import globals.global_utils as glu
 import globals.run_settings as rns
+from globals import db as dbe
 
 pd.set_option('display.max_colwidth', None)
 pd.set_option('display.max_rows', None)
@@ -90,12 +91,8 @@ def apply_odds_values():
     odds_file = f'{gls.ODDS_DATA_DIR}/current_odds-{rns.odds_date}.csv'
     if rns.use_database:
         try:
-            mys_sv = gls.SPORTSAI_DBSERVER
-            mys_db = gls.SPORTSAI_DBNAME
-            mys_us = gls.SPORTSAI_DBUSER
-            mys_ps = gls.SPORTSAI_DBPASS
-            engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
-            query = text(f'SELECT * FROM {mys_db}.{gls.SPORTSBOOK_ODDS_TABLE} WHERE OpenDate LIKE :d')
+            engine = dbe.engine()
+            query = text(f'SELECT * FROM {gls.SPORTSAI_DBNAME}.{gls.SPORTSBOOK_ODDS_TABLE} WHERE OpenDate LIKE :d')
             result_df = pd.read_sql(query, engine, params={'d': f'%{rns.odds_date}%'})
             print("Odds data loaded from database.")
         except Exception as e:

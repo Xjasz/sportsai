@@ -2,9 +2,9 @@ import os
 import pandas as pd
 import sqlalchemy
 from globals import global_utils as mutils
+from globals import db as dbe
 import globals.global_settings as gls
 import globals.run_settings as rns
-from sqlalchemy import create_engine
 
 print('Starting...')
 
@@ -15,10 +15,7 @@ if not os.path.exists(gls.SYNC_ODDS_PREDICT_FILE):
     print(f'Odds file not found : {gls.SYNC_ODDS_PREDICT_FILE}')
     exit(0)
 
-mys_sv = gls.SPORTSAI_DBSERVER
-mys_us = gls.SPORTSAI_DBUSER
-mys_ps = gls.SPORTSAI_DBPASS
-engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
+engine = dbe.engine()
 
 odds_df = pd.read_csv(gls.SYNC_ODDS_PREDICT_FILE)
 

@@ -1,12 +1,10 @@
 import globals.global_settings as gls
-from sqlalchemy import create_engine, text
+from globals import db as dbe
+from sqlalchemy import text
 
 print('Starting...')
 
-mys_sv = gls.SPORTSAI_DBSERVER
-mys_us = gls.SPORTSAI_DBUSER
-mys_ps = gls.SPORTSAI_DBPASS
-engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
+engine = dbe.engine()
 
 def create_sportsbook_odds(_engine):
     print('Creating Sportsbook Odds Table...')
