@@ -1,7 +1,6 @@
 # Xjasz Files
 data/*
 !data/load/
-ai/data/*
 
 active/*
 !active/odds_service.py
