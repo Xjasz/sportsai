@@ -37,11 +37,11 @@ Ensure you have the following installed:
    
 4. **Configure Settings**:
    - Unzip the `data/load/load_data.zip` after cloning project, it contains all games and player information up to late January 2025.
-   - Edit the `prediction_season` in `globals/run_settings.py` and set it to the current season currently its set to the `2024` season.  When running the processes the prediction will automatically attempt to run predictions for the current day.
+   - `prediction_season` in `globals/run_settings.py` is the newest season folder under `data/game/` (date-based fallback); override it there if needed.  When running the processes the prediction will automatically attempt to run predictions for the current day.
    - Edit the `use_database` in `globals/run_settings.py` and set it to `True` if you want to generate the tables the run `globals/create_sql_tables.py` to generate the initial tables.
    - Edit the `current_season_only` in `globals/run_settings.py` and set it to `True` after the first run of everything. Its set as `False` to generate all the initial data the first time.
-   - There is an automated process that uses Selenium and retreives extra information from fanduel.  If you decide to use the database then either run `active/odds_service.py` seperatly as a service each day or run it once before the 3rd process to fetch the latest Over/Under odds for Points, Assists, and Rebounds from Fanduel. Its currently set to use Firefox but can easily be changed to use another Browser like Chrome if needed.
-   - The ENVIRONEMNT VARIABLES in `globals/global_settings.py` need to be changed to point to your database if `use_database` in `globals/run_settings.py` is set to `True`.
+   - There is an automated process that uses Selenium and retrieves extra information from fanduel.  If you decide to use the database then either run `active/odds_service.py` separately as a service each day or run it once before the 3rd process to fetch the latest Over/Under odds for Points, Assists, and Rebounds from Fanduel. Its currently set to use Firefox but can easily be changed to use another Browser like Chrome if needed.
+   - The ENVIRONMENT VARIABLES in `globals/global_settings.py` need to be changed to point to your database if `use_database` in `globals/run_settings.py` is set to `True`.
    - To speed up model training with an NVIDIA GPU you should install PyTorch from `https://pytorch.org/` and select the correct CUDA version to use.
 
 5. **Final Settings**:
@@ -69,6 +69,9 @@ To run multiple prediction models, merge results:
 python generate_view.py
 ```
 
+## Smoke Test
+Run `python smoke_test.py` for a local check against a scratch copy of the data, never the real `data/` tree or `config.ini`. Stages run in order: `env`, `api`, `data`, `features`, `scrape`. Pass one or more `--stage NAME` flags to pick stages; this REPLACES the default list (`env api data features`) rather than adding to it. Other flags: `--date`, `--games`, `--files`. Results and a PASS/FAIL summary are written to `.scratch/smoke_<timestamp>.log`.
+
 ## Expected Output
 After running the AI model, you should receive output files such as:
 - `MERGE_PTS.xlsx` – Detailed logs of recent games and outcomes with the predictions.
@@ -91,7 +94,7 @@ This provides you with some additional insights to help determine decisions.
 5. Submit a pull request.
 
 ## Notes / Updates
-Each new day will automatically remove previous day information. Store previous day information seperatly if you want to track performance over a long period of time.
+Each new day will automatically remove previous day information. Store previous day information separately if you want to track performance over a long period of time.
 
 Currently this works really well with the NBA and over time has predicted correctly over 50% of the time constantly over long periods of time.  I've seen it up to 70% on some days when filtering out backups and players that are out.
 
