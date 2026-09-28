@@ -7,7 +7,7 @@ import datetime
 import pytz
 import pandas as pd
 import requests
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text, bindparam
 from typing import Optional, Dict, List, Any
 
 # ------------------------------------------------------------
@@ -284,11 +284,11 @@ def main() -> None:
     df_events.to_csv(OUTBOUND_ODDS, index=False)
     uniquedates = df_events['OpenDate'].unique()
     formatted_dates = [date.strftime('%Y-%m-%d %H:%M:%S') for date in uniquedates]
-    formatted_dates_str = ','.join([f"'{date}'" for date in formatted_dates])
     engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
-    sql_query = f"""SELECT * FROM {SPORTSBOOK_ODDS_TABLE} WHERE OpenDate IN ({formatted_dates_str})"""
+    sql_query = text(f"SELECT * FROM {SPORTSBOOK_ODDS_TABLE} WHERE OpenDate IN :dates").bindparams(
+        bindparam('dates', expanding=True))
     try:
-        database_df = pd.read_sql_query(sql_query, engine)
+        database_df = pd.read_sql_query(sql_query, engine, params={'dates': formatted_dates})
     except Exception as e:
         logger.info("Error reading from DB: %s", e)
         database_df = pd.DataFrame()

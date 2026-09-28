@@ -1,4 +1,3 @@
-import configparser
 import os
 import pandas as pd
 import sqlalchemy
@@ -16,6 +15,11 @@ if not os.path.exists(gls.SYNC_ODDS_PREDICT_FILE):
     print(f'Odds file not found : {gls.SYNC_ODDS_PREDICT_FILE}')
     exit(0)
 
+mys_sv = gls.SPORTSAI_DBSERVER
+mys_us = gls.SPORTSAI_DBUSER
+mys_ps = gls.SPORTSAI_DBPASS
+engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
+
 odds_df = pd.read_csv(gls.SYNC_ODDS_PREDICT_FILE)
 
 print('preds ready to match...')
@@ -29,12 +33,14 @@ def split_event(row):
 odds_df[['PredictDate', 'OverValue', 'UnderValue']] = odds_df.apply(split_event, axis=1)
 print(f'odds_df = {odds_df}')
 new_df = odds_df[['PredictDate','EventName','PLAYER','BetType','OverValue','UnderValue','OverOdds','UnderOdds','PTS_PRED','RT_PCT','RT3G_PCT','RT5G_PCT','RT9G_PCT']].copy()
-new_df.rename(columns={'PTS_PRED': 'Prediction'}, inplace=True)
-new_df.rename(columns={'PLAYER': 'PlayerName'}, inplace=True)
-new_df.rename(columns={'RT_PCT': 'RTPercent'}, inplace=True)
-new_df.rename(columns={'RT3G_PCT': 'RT3Percent'}, inplace=True)
-new_df.rename(columns={'RT5G_PCT': 'RT5Percent'}, inplace=True)
-new_df.rename(columns={'RT9G_PCT': 'RT9Percent'}, inplace=True)
+new_df.rename(columns={
+    'PTS_PRED': 'Prediction',
+    'PLAYER': 'PlayerName',
+    'RT_PCT': 'RTPercent',
+    'RT3G_PCT': 'RT3Percent',
+    'RT5G_PCT': 'RT5Percent',
+    'RT9G_PCT': 'RT9Percent',
+}, inplace=True)
 new_df['Points'] = 0
 new_df['AveragePoints'] = 0
 new_df['PlayerId'] = 0
@@ -42,15 +48,10 @@ mv_col = new_df.pop('Prediction')
 new_df.insert(8, 'Prediction', mv_col)
 mvpl_col = new_df.pop('PlayerId')
 new_df.insert(2, 'PlayerId', mvpl_col)
-
+new_df['AveragePoints'] = new_df['AveragePoints'].astype(float)
 
 final_df = pd.read_csv(gls.ALL_FINAL)
 txt_df = final_df[final_df['G'] == rns.sync_odds_date]
-all_zero = (txt_df[gls.TARGET_SINGLE_COLUMN] == 0).all()
-
-# if all_zero:
-#     print(f'Updated data not found: {gls.ALL_FINAL}')
-#     exit(0)
 
 print("Matching Points...")
 for index, row in txt_df.iterrows():
@@ -59,7 +60,6 @@ for index, row in txt_df.iterrows():
     pts = row[gls.TARGET_SINGLE_COLUMN]
     avg_pts = row['AVG_PTS']
     matching_row = new_df[new_df['PlayerName'] == player_name]
-    new_df['AveragePoints'] = new_df['AveragePoints'].astype(float)
     if not matching_row.empty:
         new_df.loc[matching_row.index, 'PlayerId'] = player_id
         new_df.loc[matching_row.index, 'Points'] = pts
@@ -99,14 +99,9 @@ print(f'Ready to sync {outbound_count} predictions...')
 
 if outbound_count > 0:
     print(f'Syncing with Table: {gls.NBA_PREDICTIONS_TABLE}')
-    mys_sv = gls.SPORTSAI_DBSERVER
-    mys_us = gls.SPORTSAI_DBUSER
-    mys_ps = gls.SPORTSAI_DBPASS
-    engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
     column_types = {'Confidence': sqlalchemy.types.DECIMAL(15, 10)}
     outbound_df.to_sql(gls.NBA_PREDICTIONS_TABLE, con=engine, if_exists='append', index=False, dtype=column_types)
     print(f'Synced {gls.NBA_PREDICTIONS_TABLE} with {outbound_count} records...')
-    engine.dispose()
 
 print('Removed odds sync file....')
 os.remove(gls.SYNC_ODDS_PREDICT_FILE)
@@ -123,18 +118,12 @@ outbound_df = season_df.copy()
 outbound_count = len(outbound_df)
 if outbound_count > 0:
     print(f'Syncing with Table: {gls.NBA_STATS_TABLE}')
-    config = configparser.ConfigParser()
-    config.read(gls.CFG_FILE)
-    mys_sv = gls.SPORTSAI_DBSERVER
-    mys_us = gls.SPORTSAI_DBUSER
-    mys_ps = gls.SPORTSAI_DBPASS
-    engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
     col_types = {'CONF': sqlalchemy.types.DECIMAL(15, 10)}
     # noinspection PyTypeChecker
     outbound_df.to_sql(gls.NBA_STATS_TABLE, con=engine, if_exists='append', index=False, dtype=col_types)
     print(f'Synced {gls.NBA_STATS_TABLE} with {outbound_count} records...')
-    engine.dispose()
 
+engine.dispose()
 print('Removed stats sync file....')
 os.remove(gls.SYNC_SEASON_FILE)
 

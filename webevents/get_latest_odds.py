@@ -8,41 +8,18 @@ import globals.global_settings as gls
 import globals.run_settings as rns
 from webevents import get_latest_events as gle, get_latest_injurys as gli
 from bs4 import BeautifulSoup
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from webevents import browser
 
 print('Starting...')
 current_time = datetime.datetime.now()
 formatted_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-service = None
-options = None
-browser_driver = None
-
-if gls.BROWSER_TYPE == 'FIREFOX':
-    service = FirefoxService(gls.GECKO_EXE_LOC)
-    options = webdriver.FirefoxOptions()
-    options.binary_location = gls.BROWSER_EXE_LOC
-elif gls.BROWSER_TYPE == 'CHROME':
-    service = Service(ChromeDriverManager().install())
-    options = webdriver.ChromeOptions()
-options.add_argument("--log-level=3")
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
-options.add_argument(f'--user-data-dir={gls.BROWSER_PROFILE_DIR}')
-
 def fetch_and_process_event_data_with_selenium(ex_data):
-    global browser_driver
     extracted_data = []
-    if gls.BROWSER_TYPE == 'FIREFOX':
-        browser_driver = webdriver.Firefox(service=service, options=options)
-    elif gls.BROWSER_TYPE == 'CHROME':
-        browser_driver = webdriver.Chrome(service=service, options=options)
+    browser_driver = browser.build_driver()
     with browser_driver as driver:
         for event in ex_data:
             event_id = event['eventId']
