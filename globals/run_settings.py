@@ -8,7 +8,7 @@ use_today = True
 use_seasons = False
 merge_predictions = True
 use_database = True
-prediction_season = '2025'
+prediction_season = str(date.today().year if date.today().month >= 8 else date.today().year - 1)
 prediction_date = '2025-12-01'
 odds_date = '2025-12-01'
 ##########################################
