@@ -53,8 +53,8 @@ def create_all_logs():
             df_all_logs.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True, inplace=True)
             df_all_logs.to_csv(gls.ALL_LOGS, index=False)
     else:
-        for file_name in os.listdir(gls.SEASON_DATA_DIR):
-            if rns.prediction_season in file_name:
+        for file_name in sorted(os.listdir(gls.SEASON_DATA_DIR)):
+            if rns.prediction_season in file_name and not df_all_logs.empty:
                 df_all_logs.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True, inplace=True)
                 df_all_logs.to_csv(gls.ALL_PARTIALS, index=False)
             file_path = os.path.join(gls.SEASON_DATA_DIR, file_name)
@@ -79,7 +79,7 @@ def create_games_from_logs():
 
 def set_int_dates():
     print('set_int_dates started...')
-    if not mu.file_contains_value(gls.ALL_FINAL, 'GAME_DATE_INT'):
+    if not mu.file_contains_value(gls.ALL_FINAL, 'GAMEDATEINT'):
         all_dataframe = pd.read_csv(gls.ALL_FINAL)
         date_columns = ['GAMEDATEINT', 'BIRTHDATEINT']
         all_dataframe['GAMEDATEINT'] = all_dataframe['GAME_DATE']
@@ -183,7 +183,6 @@ def set_game_active_positions():
     grouped = all_dataframe.groupby(['GAME_ID', 'TEAM_NAME', 'POSITION']).size().reset_index(name='count')
     pivot_table = grouped.pivot_table(index=['GAME_ID', 'TEAM_NAME'], columns='POSITION', values='count',fill_value=0).reset_index()
     pivot_table.columns = ['GAME_ID', 'TEAM_NAME'] + ['POSITION_' + str(col) for col in pivot_table.columns[2:]]
-    pivot_table.sort_values(by=['GAME_ID'], ascending=True)
     print(f'pivot_table size: {len(pivot_table)}')
     pivot_table = pivot_table.rename(columns=lambda x: x if x in ['GAME_ID', 'TEAM_NAME'] else 'TEAM_' + x[9:].upper())
     team_merge = all_dataframe.merge(pivot_table, how='left', on=['GAME_ID', 'TEAM_NAME'])
@@ -193,7 +192,6 @@ def set_game_active_positions():
     columns_to_drop = [col for col in tempdf.columns if'_OPP' in col and col.replace('_OPP', '') in pivot_table.columns]
     tempdf = tempdf.drop(columns=columns_to_drop)
     tempdf.columns = [col.replace('_OPP', '') for col in tempdf.columns]
-    tempdf.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True)
     all_dataframe = tempdf.copy()
     print(all_dataframe.head())
     all_dataframe.to_csv(gls.ALL_FINAL, index=False)
@@ -249,79 +247,33 @@ def final_parse():
     all_dataframe['DAYS_OUT'] = all_dataframe['DAYS_OUT'].fillna(0)
     all_dataframe['IS_STARTING'] = all_dataframe['IS_STARTING'].fillna(0)
     print('ALL_FINAL: (TEAM_) set Int32 values...')
-    all_dataframe['TEAM_CENTER'] = all_dataframe['TEAM_CENTER'].astype('Int32')
-    all_dataframe['TEAM_CENTER-FORWARD'] = all_dataframe['TEAM_CENTER-FORWARD'].astype('Int32')
-    all_dataframe['TEAM_FORWARD'] = all_dataframe['TEAM_FORWARD'].astype('Int32')
-    all_dataframe['TEAM_FORWARD-CENTER'] = all_dataframe['TEAM_FORWARD-CENTER'].astype('Int32')
-    all_dataframe['TEAM_FORWARD-GUARD'] = all_dataframe['TEAM_FORWARD-GUARD'].astype('Int32')
-    all_dataframe['TEAM_GUARD'] = all_dataframe['TEAM_GUARD'].astype('Int32')
-    all_dataframe['TEAM_GUARD-FORWARD'] = all_dataframe['TEAM_GUARD-FORWARD'].astype('Int32')
+    for col in ['TEAM_CENTER', 'TEAM_CENTER-FORWARD', 'TEAM_FORWARD', 'TEAM_FORWARD-CENTER',
+                'TEAM_FORWARD-GUARD', 'TEAM_GUARD', 'TEAM_GUARD-FORWARD']:
+        all_dataframe[col] = all_dataframe[col].astype('Int32')
     print('ALL_FINAL: (OPP_) set Int32 values...')
-    all_dataframe['OPP_CENTER'] = all_dataframe['OPP_CENTER'].astype('Int32')
-    all_dataframe['OPP_CENTER-FORWARD'] = all_dataframe['OPP_CENTER-FORWARD'].astype('Int32')
-    all_dataframe['OPP_FORWARD'] = all_dataframe['OPP_FORWARD'].astype('Int32')
-    all_dataframe['OPP_FORWARD-CENTER'] = all_dataframe['OPP_FORWARD-CENTER'].astype('Int32')
-    all_dataframe['OPP_FORWARD-GUARD'] = all_dataframe['OPP_FORWARD-GUARD'].astype('Int32')
-    all_dataframe['OPP_GUARD'] = all_dataframe['OPP_GUARD'].astype('Int32')
-    all_dataframe['OPP_GUARD-FORWARD'] = all_dataframe['OPP_GUARD-FORWARD'].astype('Int32')
+    for col in ['OPP_CENTER', 'OPP_CENTER-FORWARD', 'OPP_FORWARD', 'OPP_FORWARD-CENTER',
+                'OPP_FORWARD-GUARD', 'OPP_GUARD', 'OPP_GUARD-FORWARD']:
+        all_dataframe[col] = all_dataframe[col].astype('Int32')
     print('ALL_FINAL: (PREV_) set Int32 values...')
-    all_dataframe['PREV_PTS'] = all_dataframe['PREV_PTS'].astype('Int32')
-    all_dataframe['PREV_AST'] = all_dataframe['PREV_AST'].astype('Int32')
-    all_dataframe['PREV_REB'] = all_dataframe['PREV_REB'].astype('Int32')
-    all_dataframe['PREV_STL'] = all_dataframe['PREV_STL'].astype('Int32')
-    all_dataframe['PREV_BLK'] = all_dataframe['PREV_BLK'].astype('Int32')
-    all_dataframe['PREV_MIN'] = all_dataframe['PREV_MIN'].astype('Int32')
-    all_dataframe['PREV_FGA'] = all_dataframe['PREV_FGA'].astype('Int32')
-    all_dataframe['PREV_FGM'] = all_dataframe['PREV_FGM'].astype('Int32')
-    all_dataframe['PREV_FTA'] = all_dataframe['PREV_FTA'].astype('Int32')
-    all_dataframe['PREV_FTM'] = all_dataframe['PREV_FTM'].astype('Int32')
-    all_dataframe['PREV_FG3A'] = all_dataframe['PREV_FG3A'].astype('Int32')
-    all_dataframe['PREV_FG3M'] = all_dataframe['PREV_FG3M'].astype('Int32')
-    all_dataframe['PREV_PF'] = all_dataframe['PREV_PF'].astype('Int32')
+    for col in ['PREV_PTS', 'PREV_AST', 'PREV_REB', 'PREV_STL', 'PREV_BLK', 'PREV_MIN', 'PREV_FGA',
+                'PREV_FGM', 'PREV_FTA', 'PREV_FTM', 'PREV_FG3A', 'PREV_FG3M', 'PREV_PF']:
+        all_dataframe[col] = all_dataframe[col].astype('Int32')
     print('ALL_FINAL: (MAX_) set Int32 values...')
-    all_dataframe['MAX_PTS'] = all_dataframe['MAX_PTS'].astype('Int32')
-    all_dataframe['MAX_AST'] = all_dataframe['MAX_AST'].astype('Int32')
-    all_dataframe['MAX_REB'] = all_dataframe['MAX_REB'].astype('Int32')
-    all_dataframe['MAX_STL'] = all_dataframe['MAX_STL'].astype('Int32')
-    all_dataframe['MAX_BLK'] = all_dataframe['MAX_BLK'].astype('Int32')
-    all_dataframe['MAX_MIN'] = all_dataframe['MAX_MIN'].astype('Int32')
-    all_dataframe['MAX_FGA'] = all_dataframe['MAX_FGA'].astype('Int32')
-    all_dataframe['MAX_FGM'] = all_dataframe['MAX_FGM'].astype('Int32')
-    all_dataframe['MAX_FTA'] = all_dataframe['MAX_FTA'].astype('Int32')
-    all_dataframe['MAX_FTM'] = all_dataframe['MAX_FTM'].astype('Int32')
-    all_dataframe['MAX_FG3A'] = all_dataframe['MAX_FG3A'].astype('Int32')
-    all_dataframe['MAX_FG3M'] = all_dataframe['MAX_FG3M'].astype('Int32')
+    for col in ['MAX_PTS', 'MAX_AST', 'MAX_REB', 'MAX_STL', 'MAX_BLK', 'MAX_MIN', 'MAX_FGA',
+                'MAX_FGM', 'MAX_FTA', 'MAX_FTM', 'MAX_FG3A', 'MAX_FG3M']:
+        all_dataframe[col] = all_dataframe[col].astype('Int32')
     print('ALL_FINAL: (COMMON) set Int32 values...')
-    all_dataframe['BIRTHDATEINT'] = all_dataframe['BIRTHDATEINT'].astype('Int32')
-    all_dataframe['RETIRED'] = all_dataframe['RETIRED'].astype('Int32')
-    all_dataframe['YEARS_IN_TEAM'] = all_dataframe['YEARS_IN_TEAM'].astype('Int32')
-    all_dataframe['WEIGHT'] = all_dataframe['WEIGHT'].astype('Int32')
-    all_dataframe['HEIGHT'] = all_dataframe['HEIGHT'].astype('Int32')
-    all_dataframe['AGE'] = all_dataframe['AGE'].astype('Int32')
-    all_dataframe['WEEK_PLAYTIME'] = all_dataframe['WEEK_PLAYTIME'].astype('Int32')
-    all_dataframe['IS_OUT'] = all_dataframe['IS_OUT'].astype('Int32')
-    all_dataframe['DAYS_OUT'] = all_dataframe['DAYS_OUT'].astype('Int32')
-    all_dataframe['IS_STARTING'] = all_dataframe['IS_STARTING'].astype('Int32')
+    for col in ['BIRTHDATEINT', 'RETIRED', 'YEARS_IN_TEAM', 'WEIGHT', 'HEIGHT', 'AGE', 'WEEK_PLAYTIME',
+                'IS_OUT', 'DAYS_OUT', 'IS_STARTING']:
+        all_dataframe[col] = all_dataframe[col].astype('Int32')
     print('ALL_FINAL: (TEAM_INB,OPP_INB) set Int32 values...')
-    all_dataframe['TEAM_CENTERS_IN'] = all_dataframe['TEAM_CENTERS_IN'].astype('Int32')
-    all_dataframe['TEAM_FORWARDS_IN'] = all_dataframe['TEAM_FORWARDS_IN'].astype('Int32')
-    all_dataframe['TEAM_GUARDS_IN'] = all_dataframe['TEAM_GUARDS_IN'].astype('Int32')
-    all_dataframe['TEAM_CENTERS_IN_B'] = all_dataframe['TEAM_CENTERS_IN_B'].astype('Int32')
-    all_dataframe['TEAM_FORWARDS_IN_B'] = all_dataframe['TEAM_FORWARDS_IN_B'].astype('Int32')
-    all_dataframe['TEAM_GUARDS_IN_B'] = all_dataframe['TEAM_GUARDS_IN_B'].astype('Int32')
-    all_dataframe['OPP_CENTERS_IN'] = all_dataframe['OPP_CENTERS_IN'].astype('Int32')
-    all_dataframe['OPP_FORWARDS_IN'] = all_dataframe['OPP_FORWARDS_IN'].astype('Int32')
-    all_dataframe['OPP_GUARDS_IN'] = all_dataframe['OPP_GUARDS_IN'].astype('Int32')
-    all_dataframe['OPP_CENTERS_IN_B'] = all_dataframe['OPP_CENTERS_IN_B'].astype('Int32')
-    all_dataframe['OPP_FORWARDS_IN_B'] = all_dataframe['OPP_FORWARDS_IN_B'].astype('Int32')
-    all_dataframe['OPP_GUARDS_IN_B'] = all_dataframe['OPP_GUARDS_IN_B'].astype('Int32')
+    for col in ['TEAM_CENTERS_IN', 'TEAM_FORWARDS_IN', 'TEAM_GUARDS_IN', 'TEAM_CENTERS_IN_B',
+                'TEAM_FORWARDS_IN_B', 'TEAM_GUARDS_IN_B', 'OPP_CENTERS_IN', 'OPP_FORWARDS_IN',
+                'OPP_GUARDS_IN', 'OPP_CENTERS_IN_B', 'OPP_FORWARDS_IN_B', 'OPP_GUARDS_IN_B']:
+        all_dataframe[col] = all_dataframe[col].astype('Int32')
     print('ALL_FINAL: (OPP_PREV_PF,OPP_PREV_STL,OPP_PREV_BLK,OPP_PREV_PF_B,OPP_PREV_BLK_B) set Int32 values...')
-    all_dataframe['OPP_PREV_PF'] = all_dataframe['OPP_PREV_PF'].astype('Int32')
-    all_dataframe['OPP_PREV_STL'] = all_dataframe['OPP_PREV_STL'].astype('Int32')
-    all_dataframe['OPP_PREV_BLK'] = all_dataframe['OPP_PREV_BLK'].astype('Int32')
-    all_dataframe['OPP_PREV_PF_B'] = all_dataframe['OPP_PREV_PF_B'].astype('Int32')
-    all_dataframe['OPP_PREV_STL_B'] = all_dataframe['OPP_PREV_STL_B'].astype('Int32')
-    all_dataframe['OPP_PREV_BLK_B'] = all_dataframe['OPP_PREV_BLK_B'].astype('Int32')
+    for col in ['OPP_PREV_PF', 'OPP_PREV_STL', 'OPP_PREV_BLK', 'OPP_PREV_PF_B', 'OPP_PREV_STL_B', 'OPP_PREV_BLK_B']:
+        all_dataframe[col] = all_dataframe[col].astype('Int32')
 
     if 'TEAM' in all_dataframe.columns:
         print('Removing TEAM column using TEAM_NAME')
@@ -415,21 +367,20 @@ def build_combined_files():
     print("Final convert starting...")
     if os.path.exists(gls.ALL_FINAL):
         print(f'Loading ALL_FINAL: {gls.ALL_FINAL}')
-        pd.read_csv(gls.ALL_FINAL, dtype=mu.get_col_types(gls.ALL_FINAL))
     else:
         print(f'Generating ALL_FINAL: {gls.ALL_FINAL}')
         final_df = pd.read_csv(gls.ALL_COMBINED, dtype=mu.get_col_types(gls.ALL_COMBINED))
         if 'PLAYER_NAME_y' in final_df.columns:
-            print(f"final_df -> Removing: PLAYER_NAME_y")
+            print("final_df -> Removing: PLAYER_NAME_y")
             final_df = final_df.drop('PLAYER_NAME_y', axis=1)
         if 'PLAYER_NAME_x' in final_df.columns:
-            print(f"final_df -> Converting: PLAYER_NAME_x to PLAYER_NAME")
+            print("final_df -> Converting: PLAYER_NAME_x to PLAYER_NAME")
             final_df = final_df.rename(columns={'PLAYER_NAME_x': 'PLAYER_NAME'})
         if 'POSITION_y' in final_df.columns:
-            print(f"final_df -> Removing: POSITION_y")
+            print("final_df -> Removing: POSITION_y")
             final_df = final_df.drop('POSITION_y', axis=1)
         if 'POSITION_x' in final_df.columns:
-            print(f"final_df -> Converting: POSITION_x to POSITION")
+            print("final_df -> Converting: POSITION_x to POSITION")
             final_df = final_df.rename(columns={'POSITION_x': 'POSITION'})
         unique_positions = final_df['POSITION'].unique()
         print("Unique Positions:", unique_positions)
