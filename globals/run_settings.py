@@ -1,4 +1,6 @@
+import os
 from datetime import date
+import globals.global_settings as gls
 ##########################################
 ######### RUN SETTINGS FOR DATA PREDICTION
 update_active_players_team = False
@@ -8,7 +10,8 @@ use_today = True
 use_seasons = False
 merge_predictions = True
 use_database = True
-prediction_season = '2025'
+_seasons = [d for d in os.listdir(gls.GAMES_DATA_DIR) if d.isdigit()] if os.path.isdir(gls.GAMES_DATA_DIR) else []
+prediction_season = max(_seasons) if _seasons else str(date.today().year if date.today().month >= 8 else date.today().year - 1)
 prediction_date = '2025-12-01'
 odds_date = '2025-12-01'
 ##########################################

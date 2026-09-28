@@ -88,16 +88,16 @@ def find_opponent(item, pos_df, benchcheck=False):
             opp_obj = opp_obj.loc[[closest_min_index]]
 
     if benchcheck and opp_obj.empty:
-        bench_opp_obj  = pos_df[pos_df['TEAM_NAME'] == ioppteam]
+        bench_opp_obj = pos_df[pos_df['TEAM_NAME'] == ioppteam]
         for pos in positions:
-            opp_obj = bench_opp_obj [bench_opp_obj ['POSITION'] == pos][array_vals]
+            opp_obj = bench_opp_obj[bench_opp_obj['POSITION'] == pos][array_vals]
             if not opp_obj.empty: break
 
-            if opp_obj.empty:
-                opp_obj = bench_opp_obj [array_vals]
-                if not opp_obj.empty and len(opp_obj) > 1:
-                    closest_min_index = (opp_obj['MIN'] - imin).abs().idxmin()
-                    opp_obj = opp_obj.loc[[closest_min_index]]
+        if opp_obj.empty:
+            opp_obj = bench_opp_obj[array_vals]
+            if not opp_obj.empty and len(opp_obj) > 1:
+                closest_min_index = (opp_obj['MIN'] - imin).abs().idxmin()
+                opp_obj = opp_obj.loc[[closest_min_index]]
 
     if opp_obj.empty:
         raise ValueError("No Valid Opponent Found...")
@@ -160,7 +160,7 @@ def set_extra_stats(gl_df, gl_path):
         for player_id in gl_df['PLAYER_ID'].unique():
             player_index = gl_df['PLAYER_ID'] == player_id
             gl_df.loc[player_index, 'WEEK_PLAYTIME'] = gl_df.loc[player_index].set_index('GAME_DATE')['MIN'].rolling('7D').sum().values
-        gl_df['WEEK_PLAYTIME'].fillna(0, inplace=True)
+        gl_df['WEEK_PLAYTIME'] = gl_df['WEEK_PLAYTIME'].fillna(0)
         gl_df['WEEK_PLAYTIME'] = gl_df['WEEK_PLAYTIME'] - gl_df['MIN']
         change_made = True
     if 'IS_STARTING' not in gl_df.columns:
@@ -180,33 +180,31 @@ def set_opponent_name(df_log,file_path):
         df_log.to_csv(file_path, index=False)
     print('set_opponent_name completed...')
 
+OPP_DEF_FIELDS = [
+    ('LAST_GAME_DAYS', 'OPP_LAST_GAME_DAYS', 0), ('BACKTOBACKGAME', 'OPP_BACKTOBACKGAME', 0), ('WEEK_PLAYTIME', 'OPP_WEEK_PLAYTIME', 0),
+    ('PREV_PF', 'OPP_PREV_PF', 0), ('PREV_STL', 'OPP_PREV_STL', 0), ('PREV_BLK', 'OPP_PREV_BLK', 0),
+    ('RT3_PF', 'OPP_RT3_PF', 0.0), ('AVG_PF', 'OPP_AVG_PF', 0.0), ('RT3_STL', 'OPP_RT3_STL', 0.0),
+    ('AVG_STL', 'OPP_AVG_STL', 0.0), ('RT3_BLK', 'OPP_RT3_BLK', 0.0), ('AVG_BLK', 'OPP_AVG_BLK', 0.0),
+]
+
 def set_opponent_def(df_log,file_path):
     print('set_opponent_def started...')
     if not 'OPP_LAST_GAME_DAYS' in df_log.columns:
         start_time = time.time()
-        for col in ['OPP_LAST_GAME_DAYS','OPP_BACKTOBACKGAME','OPP_WEEK_PLAYTIME','OPP_PREV_PF','OPP_PREV_STL','OPP_PREV_BLK']:
-            df_log[col] = 0
-        for col in [ 'OPP_RT3_PF','OPP_AVG_PF','OPP_RT3_STL','OPP_AVG_STL','OPP_RT3_BLK','OPP_AVG_BLK']:
-            df_log[col] = 0.0
-        opponent_info = {(row['PLAYER_ID'], row['TEAM_NAME'], row['GAME_DATE']): row for index, row in df_log.iterrows()}
-        for index, row in df_log.iterrows():
-            key = (row['OPP_PLAYER_ID'], row['OPP_NAME'], row['GAME_DATE'])
-            if key in opponent_info:
-                opponent_row = opponent_info[key]
-                df_log.at[index, 'OPP_LAST_GAME_DAYS'] = opponent_row['LAST_GAME_DAYS'] if pd.notna(opponent_row['LAST_GAME_DAYS']) and opponent_row['LAST_GAME_DAYS'] != 0 else 0
-                df_log.at[index, 'OPP_BACKTOBACKGAME'] = opponent_row['BACKTOBACKGAME'] if pd.notna(opponent_row['BACKTOBACKGAME']) and opponent_row['BACKTOBACKGAME'] != 0 else 0
-                df_log.at[index, 'OPP_WEEK_PLAYTIME'] = opponent_row['WEEK_PLAYTIME'] if pd.notna(opponent_row['WEEK_PLAYTIME']) and opponent_row['WEEK_PLAYTIME'] != 0 else 0
-                df_log.at[index, 'OPP_PREV_PF'] = opponent_row['PREV_PF'] if pd.notna(opponent_row['PREV_PF']) and opponent_row['PREV_PF'] != 0 else 0
-                df_log.at[index, 'OPP_RT3_PF'] = opponent_row['RT3_PF'] if pd.notna(opponent_row['RT3_PF']) and opponent_row['RT3_PF'] != 0 else 0.0
-                df_log.at[index, 'OPP_AVG_PF'] = opponent_row['AVG_PF'] if pd.notna(opponent_row['AVG_PF']) and opponent_row['AVG_PF'] != 0 else 0.0
-                df_log.at[index, 'OPP_PREV_STL'] = opponent_row['PREV_STL'] if pd.notna(opponent_row['PREV_STL']) and opponent_row['PREV_STL'] != 0 else 0
-                df_log.at[index, 'OPP_RT3_STL'] = opponent_row['RT3_STL'] if pd.notna(opponent_row['RT3_STL']) and opponent_row['RT3_STL'] != 0 else 0.0
-                df_log.at[index, 'OPP_AVG_STL'] = opponent_row['AVG_STL'] if pd.notna(opponent_row['AVG_STL']) and opponent_row['AVG_STL'] != 0 else 0.0
-                df_log.at[index, 'OPP_PREV_BLK'] = opponent_row['PREV_BLK'] if pd.notna(opponent_row['PREV_BLK']) and opponent_row['PREV_BLK'] != 0 else 0
-                df_log.at[index, 'OPP_RT3_BLK'] = opponent_row['RT3_BLK'] if pd.notna(opponent_row['RT3_BLK']) and opponent_row['RT3_BLK'] != 0 else 0.0
-                df_log.at[index, 'OPP_AVG_BLK'] = opponent_row['AVG_BLK'] if pd.notna(opponent_row['AVG_BLK']) and opponent_row['AVG_BLK'] != 0 else 0.0
-            else:
-                raise ValueError(f"No player found for GAME_ID:{row['GAME_ID']} --> OPP_PLAYER_ID:{row['OPP_PLAYER_ID']}-TEAM:{row['OPP_NAME']}  PLAYER_ID:{row['PLAYER_ID']}")
+        key_cols = ['PLAYER_ID', 'TEAM_NAME', 'GAME_DATE']
+        opp_lookup = df_log[key_cols + [src for src, _, _ in OPP_DEF_FIELDS]].drop_duplicates(subset=key_cols, keep='last')
+        opp_lookup = opp_lookup.rename(columns={'PLAYER_ID': 'OPP_PLAYER_ID', 'TEAM_NAME': 'OPP_NAME',
+                                                 **{src: dest for src, dest, _ in OPP_DEF_FIELDS}})
+        df_log = df_log.merge(opp_lookup, on=['OPP_PLAYER_ID', 'OPP_NAME', 'GAME_DATE'], how='left', indicator=True)
+        unmatched = df_log[df_log['_merge'] == 'left_only']
+        if not unmatched.empty:
+            row = unmatched.iloc[0]
+            raise ValueError(f"No player found for GAME_ID:{row['GAME_ID']} --> OPP_PLAYER_ID:{row['OPP_PLAYER_ID']}"
+                              f"-TEAM:{row['OPP_NAME']}  PLAYER_ID:{row['PLAYER_ID']}")
+        df_log = df_log.drop(columns='_merge')
+        for _, dest, default in OPP_DEF_FIELDS:
+            filled = df_log[dest].where(df_log[dest].notna() & (df_log[dest] != 0), default)
+            df_log[dest] = pd.to_numeric(filled, downcast='integer') if isinstance(default, int) else filled.astype('float64')
         df_log.to_csv(file_path, index=False)
         print(f'Generated (OPP_PLAYER_NAME, OPP_LAST_GAME_DAYS,OPP_BACKTOBACKGAME,OPP_WEEK_PLAYTIME,OPP_PREV_PF,OPP_RT3_STL,OPP_AVG_BLK) completed in {round(time.time() - start_time, 2)} seconds..')
     df_log = pd.read_csv(file_path)
@@ -222,10 +220,10 @@ def set_opponent_def(df_log,file_path):
             for lag in [1, 3, 5, 9]:
                 column_name = f'OPP_{stat}{lag}'
                 df_log[column_name] = df_log.groupby(['OPP_PLAYER_ID'])[f'{stat}_PREV'].transform(lambda x: x.shift().rolling(window=lag, min_periods=1).mean().round(2))
-                df_log[column_name].fillna(0, inplace=True)
+                df_log[column_name] = df_log[column_name].fillna(0)
             avg_column_name = f'OPP_{stat}AVG'
             df_log[avg_column_name] = df_log.groupby(['OPP_PLAYER_ID'])[f'{stat}_PREV'].transform(lambda x: x.shift().expanding(min_periods=1).mean().round(2))
-            df_log[avg_column_name].fillna(0, inplace=True)
+            df_log[avg_column_name] = df_log[avg_column_name].fillna(0)
         df_log.drop(columns=[f'{stat}_PREV' for stat in stats], inplace=True)
         df_log.to_csv(file_path, index=False)
         print(f'Generated (OPP_DEF1_PTS,OPP_DEF1_AST,OPP_DEF1_REB) completed in {round(time.time() - start_time, 2)} seconds..')
@@ -260,52 +258,14 @@ def combine_games_to_season():
                 df_log = pd.read_csv(file_path)
                 if not df_log.empty:
                     df_all_logs = pd.concat([df_all_logs, df_log], ignore_index=True)
-            df_all_logs['WINS'] = df_all_logs['WINS'].astype('Int32')
-            df_all_logs['LOSSES'] = df_all_logs['LOSSES'].astype('Int32')
-            df_all_logs['OFFICIAL1'] = df_all_logs['OFFICIAL1'].astype('Int32')
-            df_all_logs['OFFICIAL2'] = df_all_logs['OFFICIAL2'].astype('Int32')
-            df_all_logs['MIN'] = df_all_logs['MIN'].astype('Int32')
-            df_all_logs['FGM'] = df_all_logs['FGM'].astype('Int32')
-            df_all_logs['FGA'] = df_all_logs['FGA'].astype('Int32')
-            df_all_logs['FG3M'] = df_all_logs['FG3M'].astype('Int32')
-            df_all_logs['FG3A'] = df_all_logs['FG3A'].astype('Int32')
-            df_all_logs['FTM'] = df_all_logs['FTM'].astype('Int32')
-            df_all_logs['FTA'] = df_all_logs['FTA'].astype('Int32')
-            df_all_logs['OREB'] = df_all_logs['OREB'].astype('Int32')
-            df_all_logs['DREB'] = df_all_logs['DREB'].astype('Int32')
-            df_all_logs['REB'] = df_all_logs['REB'].astype('Int32')
-            df_all_logs['AST'] = df_all_logs['AST'].astype('Int32')
-            df_all_logs['STL'] = df_all_logs['STL'].astype('Int32')
-            df_all_logs['BLK'] = df_all_logs['BLK'].astype('Int32')
-            df_all_logs['TO'] = df_all_logs['TO'].astype('Int32')
-            df_all_logs['PF'] = df_all_logs['PF'].astype('Int32')
-            df_all_logs['PTS'] = df_all_logs['PTS'].astype('Int32')
-            df_all_logs['OPP_WINS'] = df_all_logs['OPP_WINS'].astype('Int32')
-            df_all_logs['OPP_LOSSES'] = df_all_logs['OPP_LOSSES'].astype('Int32')
-            df_all_logs['PLUS_MINUS'] = df_all_logs['PLUS_MINUS'].astype('Int32')
-            df_all_logs['TEAM_DNP'] = df_all_logs['TEAM_DNP'].astype('Int32')
-            df_all_logs['TEAM_OUT'] = df_all_logs['TEAM_OUT'].astype('Int32')
-            df_all_logs['OPP_DNP'] = df_all_logs['OPP_DNP'].astype('Int32')
-            df_all_logs['OPP_OUT'] = df_all_logs['OPP_OUT'].astype('Int32')
-            df_all_logs['DISTANCE'] = df_all_logs['DISTANCE'].astype('Int32')
-            df_all_logs['OPP_DISTANCE'] = df_all_logs['OPP_DISTANCE'].astype('Int32')
-            df_all_logs['TWIN'] = df_all_logs['TWIN'].astype('Int32')
-            df_all_logs['TLOSS'] = df_all_logs['TLOSS'].astype('Int32')
-            df_all_logs['OWIN'] = df_all_logs['OWIN'].astype('Int32')
-            df_all_logs['OLOSS'] = df_all_logs['OLOSS'].astype('Int32')
-            df_all_logs['GAMES_IN'] = df_all_logs['GAMES_IN'].astype('Int32')
-            df_all_logs['GAMES_OUT'] = df_all_logs['GAMES_OUT'].astype('Int32')
-            df_all_logs['GAMES_CONT'] = df_all_logs['GAMES_CONT'].astype('Int32')
-            df_all_logs['GAMES_START'] = df_all_logs['GAMES_START'].astype('Int32')
-            df_all_logs['GAMES_BENCH'] = df_all_logs['GAMES_BENCH'].astype('Int32')
-            df_all_logs['TEAM_OUT_START'] = df_all_logs['TEAM_OUT_START'].astype('Int32')
-            df_all_logs['TEAM_OUT_BENCH'] = df_all_logs['TEAM_OUT_BENCH'].astype('Int32')
-            df_all_logs['OPP_OUT_START'] = df_all_logs['OPP_OUT_START'].astype('Int32')
-            df_all_logs['OPP_OUT_BENCH'] = df_all_logs['OPP_OUT_BENCH'].astype('Int32')
-            df_all_logs['DEF_PTS'] = df_all_logs['DEF_PTS'].astype('Int32')
-            df_all_logs['DEF_AST'] = df_all_logs['DEF_AST'].astype('Int32')
-            df_all_logs['DEF_REB'] = df_all_logs['DEF_REB'].astype('Int32')
-            df_all_logs['OPP_PLAYER_ID'] = df_all_logs['OPP_PLAYER_ID'].astype('Int32')
+            int32_columns = ['WINS', 'LOSSES', 'OFFICIAL1', 'OFFICIAL2', 'MIN', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA',
+                              'OREB', 'DREB', 'REB', 'AST', 'STL', 'BLK', 'TO', 'PF', 'PTS', 'OPP_WINS', 'OPP_LOSSES',
+                              'PLUS_MINUS', 'TEAM_DNP', 'TEAM_OUT', 'OPP_DNP', 'OPP_OUT', 'DISTANCE', 'OPP_DISTANCE',
+                              'TWIN', 'TLOSS', 'OWIN', 'OLOSS', 'GAMES_IN', 'GAMES_OUT', 'GAMES_CONT', 'GAMES_START',
+                              'GAMES_BENCH', 'TEAM_OUT_START', 'TEAM_OUT_BENCH', 'OPP_OUT_START', 'OPP_OUT_BENCH',
+                              'DEF_PTS', 'DEF_AST', 'DEF_REB', 'OPP_PLAYER_ID']
+            for col in int32_columns:
+                df_all_logs[col] = df_all_logs[col].astype('Int32')
             df_all_logs['IS_OUT'] = np.where(df_all_logs['COMMENT'].isna() | (df_all_logs['COMMENT'] == ''), 0, 1).astype(int)
             df_all_logs['GAME_DATE'] = pd.to_datetime(df_all_logs['GAME_DATE'])
             df_all_logs = df_all_logs.sort_values(by=['PLAYER_ID', 'GAME_DATE'])
@@ -438,8 +398,6 @@ def set_positions_and_cleanup():
         directory = f'{gls.GAMES_DATA_DIR}{item}/'
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
-            if '22400014' in file_name:
-                print('check....')
             if glu.file_contains_value(file_path, 'NICKNAME'):
                 df_log = pd.read_csv(file_path)
                 df_log.drop(['NICKNAME'], axis=1, inplace=True)
@@ -616,12 +574,9 @@ def set_invalid_players():
                 df_log['OPP_DNP'] = df_log['TEAM_NAME'].apply(lambda x: t2_keywords['DNP'] if x == t1_keywords['TEAM'] else t1_keywords['DNP'])
                 df_log['OPP_OUT'] = df_log['TEAM_NAME'].apply(lambda x: t2_keywords['OUT'] if x == t1_keywords['TEAM'] else t1_keywords['OUT'])
                 df_log.to_csv(file_path, index=False)
-                for keyword, count in all_keywords.items():
-                    all_keywords[keyword] = 0
-                    t1_keywords[keyword] = 0
-                    t1_keywords['TEAM'] = ''
-                    t2_keywords[keyword] = 0
-                    t2_keywords['TEAM'] = ''
+                all_keywords = {'DNP': 0, 'OUT': 0}
+                t1_keywords = {'TEAM': '', 'DNP': 0, 'OUT': 0}
+                t2_keywords = {'TEAM': '', 'DNP': 0, 'OUT': 0}
     print('set_invalid_players completed...')
 
 def fix_prediction_values():
@@ -672,24 +627,25 @@ def clear_calculations():
             os.remove(f_path)
     print('clear_calculations completed...')
 
-print('Starting...')
-if rns.run_from_start_to_finish:
-    glu.remove_folder_and_contents(gls.TOP_OUTPUT_DIR)
-    cgl.create_game_logs_start()
-gnd.generate_predicitons_start()
-clear_calculations()
-pld.create_player_details()
-pld.delete_invalid_player_details()
-set_invalid_players()
-set_positions_and_cleanup()
-set_distance_altitude()
-track_player_out_events()
-set_opponents()
-set_player_opponents()
-set_out_totals()
-set_current_wins()
-fix_prediction_values()
-combine_games_to_season()
-setup_season_values()
-aib.build_all_files()
-print('Finished...')
+if __name__ == '__main__':
+    print('Starting...')
+    if rns.run_from_start_to_finish:
+        glu.remove_folder_and_contents(gls.TOP_OUTPUT_DIR)
+        cgl.create_game_logs_start()
+    gnd.generate_predictions_start()
+    clear_calculations()
+    pld.create_player_details()
+    pld.delete_invalid_player_details()
+    set_invalid_players()
+    set_positions_and_cleanup()
+    set_distance_altitude()
+    track_player_out_events()
+    set_opponents()
+    set_player_opponents()
+    set_out_totals()
+    set_current_wins()
+    fix_prediction_values()
+    combine_games_to_season()
+    setup_season_values()
+    aib.build_all_files()
+    print('Finished...')

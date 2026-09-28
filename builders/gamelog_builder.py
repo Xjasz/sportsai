@@ -46,6 +46,9 @@ def create_game_data(game_id, seasondf, alt_directory=None, will_save=True):
     combined_df['SEASON'] = season
     team_records = seasondf[["TEAM_ID", "GAME_ID", "WINS", "LOSSES"]]
     combined_df = combined_df.merge(team_records, on=["TEAM_ID", "GAME_ID"], how="left")
+    for n in range(1, 4):
+        combined_df[f"OFFICIAL{n}"] = None
+        combined_df[f"OFFICIAL{n}NAME"] = None
     for i, r in df_officials.head(3).iterrows():
         combined_df[f"OFFICIAL{i + 1}"] = r["PERSON_ID"]
         combined_df[f"OFFICIAL{i + 1}NAME"] = f"{r['FIRST_NAME']} {r['FAMILY_NAME']}"
@@ -133,7 +136,7 @@ def print_game_info(player_stats, team_stats, game_summary, inactive_players, of
 def create_all_games():
     all_games = pd.read_csv(gls.ALL_GAMES)
     games_df = all_games[all_games['CAPTURED'] == 0]
-    print(f'--------------------   DO NOT USE THIS   --------------------')
+    print('--------------------   DO NOT USE THIS   --------------------')
     print(f'Loaded Games to find... need {len(games_df)} games...')
     # for index, row in games_df.iterrows():
     #     game_id = row['GAME_ID']
