@@ -71,7 +71,7 @@ def fix_filenames():
                 print(f"finalRename '{filename}' to '{new_filename}'")
                 if os.path.exists(os.path.join(gls.PLAYER_DETAIL_DIR, new_filename)):
                     print(f"Removing already existing file '{new_filename}'")
-                    os.remove(os.path.join(gls.PLAYER_DETAIL_DIR, new_filename));
+                    os.remove(os.path.join(gls.PLAYER_DETAIL_DIR, new_filename))
                 os.rename(os.path.join(gls.PLAYER_DETAIL_DIR, filename),os.path.join(gls.PLAYER_DETAIL_DIR, new_filename))
 
 def extract_players(game_log_dir):

@@ -23,10 +23,8 @@ print("Loaded.... gamelog_builder")
 # Create games from latest_gamedate to current date of system.
 # Updates and skips dates found in valid_skip_dates.csv to avoid searching dates more than once.
 # SET 'print_all_info' to 'TRUE' to see details for each game created.
-# SET 'CREATE_ALL' to 'TRUE' to force create from list of game_ids.
 #########################################################################################################################################
 PRINT_ALL_INFO = False
-CREATE_ALL = False
 
 def create_game_data(game_id, seasondf, alt_directory=None, will_save=True):
     print(f'Creating GameID:{game_id}')
@@ -130,15 +128,6 @@ def print_game_info(player_stats, team_stats, game_summary, inactive_players, of
     print("\nOfficials:")
     print(officials)
 
-def create_all_games():
-    all_games = pd.read_csv(gls.ALL_GAMES)
-    games_df = all_games[all_games['CAPTURED'] == 0]
-    print('--------------------   DO NOT USE THIS   --------------------')
-    print(f'Loaded Games to find... need {len(games_df)} games...')
-    # for index, row in games_df.iterrows():
-    #     game_id = row['GAME_ID']
-    #     create_game_data(game_id)
-
 def fetch_game_ids(date):
     date_str = date.strftime('%m/%d/%Y')
     games_df = leaguegamefinder.LeagueGameFinder(season_type_nullable='Regular Season', date_from_nullable=date_str, date_to_nullable=date_str, league_id_nullable='00').get_data_frames()[0]
@@ -228,10 +217,7 @@ def clear_prediction_games():
 
 def create_game_logs_start():
     clear_prediction_games()
-    if CREATE_ALL:
-        create_all_games()
-    else:
-        create_recent_games()
+    create_recent_games()
     recreate_location_distances()
 
 print("Loaded.... gamelog_builder")

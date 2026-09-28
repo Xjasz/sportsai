@@ -5,6 +5,7 @@ import globals.global_settings as gls
 import globals.run_settings as rns
 import webevents.get_latest_injurys as gli
 import webevents.get_latest_events as gle
+from builders import gamelog_builder as cgl
 from unidecode import unidecode
 
 print("Loading.... prediction_builder")
@@ -15,35 +16,11 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 
-def remove_old_predictions():
-    print('remove_old_predictions...')
-    pred_year = rns.prediction_season
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if pred_year not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
-        for file_name in os.listdir(directory):
-            file_path = os.path.join(directory, file_name)
-            df_log = pd.read_csv(file_path)
-            remove_file = False
-            if 'IS_PREDICTOR' in df_log.columns:
-                first_row = df_log.head(1)
-                is_pred = first_row['IS_PREDICTOR'][0]
-                if is_pred == 1:
-                    remove_file = True
-            if remove_file:
-                print(f'File prediction exists removing {file_path}..')
-                os.remove(file_path)
-
 def process_directory(inj_data, evt_data, spb_data, off_data):
-    season_path = f'{gls.GAMES_DATA_DIR}/{rns.prediction_season}/'
+    season_path = f'{gls.GAMES_DATA_DIR}{rns.prediction_season}/'
     files = [f for f in os.listdir(season_path) if os.path.isfile(os.path.join(season_path, f))]
-    highest_name_file = max(files) if files else None
-    gparts = highest_name_file.split('-')
-    latest_game_id = '_'.join(gparts[3:]).replace('.csv', '')
-    print(f'Latest Game ID:{latest_game_id}')
     files_sorted_descending = sorted(files, reverse=True)
+    distance_df = pd.read_csv(gls.LOCATION_DISTANCES)
     for item1 in spb_data:
         t1,t2 = item1['home_team'][1],item1['away_team'][1]
         for item2 in evt_data:
@@ -73,11 +50,14 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
                 print(f"previous_invalids:\n{previous_invalids}")
                 homedf,awaydf = homedf.copy(),awaydf.copy()
                 break
+        if homedf is None:
+            raise ValueError(f"No previous game found for home team {t1}")
+        if awaydf is None:
+            raise ValueError(f"No previous game found for away team {t2}")
         homedf['PLAYER_NAME'] = homedf['PLAYER_NAME'].apply(unidecode)
         awaydf['PLAYER_NAME'] = awaydf['PLAYER_NAME'].apply(unidecode)
         e_gid = event['game_id']
         e_gametime = event['game_time']
-        distance_df = pd.read_csv(gls.LOCATION_DISTANCES)
         specific_distance = distance_df[(distance_df['HOME'] == t1) & (distance_df['AWAY'] == t2)]
         homedf.loc[:,'IS_HOME'] = 1
         homedf.loc[:,'DISTANCE'] = 0
@@ -133,9 +113,9 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
             player['name'] = unidecode(player['name'])
 
         for player in home_players:
-            combined_df = set_postion_status(combined_df, player)
+            combined_df = set_position_status(combined_df, player)
         for player in away_players:
-            combined_df = set_postion_status(combined_df, player)
+            combined_df = set_position_status(combined_df, player)
         count_C_positions = (combined_df['START_POSITION'] == 'C').sum()
         count_G_positions = (combined_df['START_POSITION'] == 'G').sum()
         count_F_positions = (combined_df['START_POSITION'] == 'F').sum()
@@ -155,7 +135,7 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
     print("Finished generating prediction games....")
 
 
-def set_postion_status(df, player):
+def set_position_status(df, player):
     p_name, p_position, p_status = player['name'], player['position'], player['status']
     if p_name == 'Giannis G. Antetokounmpo':
         p_name = 'Giannis Antetokounmpo'
@@ -168,13 +148,13 @@ def set_postion_status(df, player):
         print(f'Unknown Player:{p_name} skipping...')
     return df
 
-def generate_predicitons_start():
+def generate_predictions_start():
     inj_data = gli.find_injury_news()
     print(f'Injury News:{inj_data}')
     evt_data = gle.find_todays_nba_lineups()
     off_data = gle.scrape_game_officials()
     spb_data = gle.find_sportsbook_games()
-    remove_old_predictions()
+    cgl.clear_prediction_games()
     process_directory(inj_data, evt_data, spb_data, off_data)
 
 print("Loaded.... prediction_builder")
