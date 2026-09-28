@@ -10,32 +10,56 @@ import requests
 from sqlalchemy import create_engine
 from typing import Optional, Dict, List, Any
 
+# ------------------------------------------------------------
+# Logging
+# ------------------------------------------------------------
 logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s',filename='sportsbook_odds.log')
-
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 logger.addHandler(console_handler)
 
 logger.info('Starting...')
+
+
+# ------------------------------------------------------------
+# Config / Constants
+# ------------------------------------------------------------
 SPORTSBOOK_API_URL = 'https://sbapi.in.sportsbook.fanduel.com/api/'
 MAIN_DB_CREDS = '{DB_CRED_JSON_LOCATION}'
 SPORTSBOOK_ODDS_TABLE = 'sportsbook_odds'
-TEAM_TOSHORT_MAPPER = {"Hawks": "ATL","Celtics": "BOS","Nets": "BKN","Hornets": "CHA","Bobcats": "CHA","Bulls": "CHI", "Cavaliers": "CLE","Mavericks": "DAL","Nuggets": "DEN","Pistons": "DET","Warriors": "GSW","Rockets": "HOU","Pacers": "IND","Clippers": "LAC","Lakers": "LAL","Grizzlies": "MEM","Heat": "MIA","Bucks": "MIL","Timberwolves": "MIN","Pelicans": "NOP","Knicks": "NYK","Thunder": "OKC","Sonics": "OKC","Magic": "ORL","76ers": "PHI","Suns": "PHX","Trail Blazers": "POR","Blazers": "POR","Kings": "SAC","Spurs": "SAS","Raptors": "TOR","Jazz": "UTA","Wizards": "WAS"}
+EVENT_TYPE = 'nba'
+OUTBOUND_ODDS = 'odds_service_data.csv'
 
-with open(MAIN_DB_CREDS, 'r') as json_file:
-    settings = json.load(json_file)
-mys_sv = eventc_value = settings.get('my_sql_s')
-mys_us = eventc_value = settings.get('my_sql_u')
-mys_ps = eventc_value = settings.get('my_sql_p')
+TEAM_TOSHORT_MAPPER = {
+    "Hawks": "ATL", "Celtics": "BOS", "Nets": "BKN", "Hornets": "CHA", "Bobcats": "CHA",
+    "Bulls": "CHI", "Cavaliers": "CLE", "Mavericks": "DAL", "Nuggets": "DEN", "Pistons": "DET",
+    "Warriors": "GSW", "Rockets": "HOU", "Pacers": "IND", "Clippers": "LAC", "Lakers": "LAL",
+    "Grizzlies": "MEM", "Heat": "MIA", "Bucks": "MIL", "Timberwolves": "MIN", "Pelicans": "NOP",
+    "Knicks": "NYK", "Thunder": "OKC", "Sonics": "OKC", "Magic": "ORL", "76ers": "PHI",
+    "Suns": "PHX", "Trail Blazers": "POR", "Blazers": "POR", "Kings": "SAC", "Spurs": "SAS",
+    "Raptors": "TOR", "Jazz": "UTA", "Wizards": "WAS"
+}
 
-event_type = 'nba'
-outbound_odds = 'odds_service_data.csv'
-formatted_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+utc_tz = pytz.timezone('UTC')
+est_tz = pytz.timezone('US/Eastern')
 current_time = datetime.datetime.now()
-utc_timezone = pytz.timezone('UTC')
-est_timezone = pytz.timezone('US/Eastern')
+formatted_now = current_time.strftime("%Y-%m-%d %H:%M:%S")
 
+# ------------------------------------------------------------
+# DB credentials
+# ------------------------------------------------------------
+with open(MAIN_DB_CREDS, 'r') as f:
+    settings = json.load(f)
+
+mys_sv = settings.get('my_sql_s')
+mys_us = settings.get('my_sql_u')
+mys_ps = settings.get('my_sql_p')
+
+
+# ------------------------------------------------------------
+# HTTP Session
+# ------------------------------------------------------------
 
 def create_session() -> requests.Session:
     s = requests.Session()
@@ -49,8 +73,8 @@ def create_session() -> requests.Session:
         "Accept-Encoding": "gzip, deflate",
         "Connection": "keep-alive",
         "Cookie": (
-            "pxcts={PXCTS}; "
-            "_pxvid={PXVID}"
+            "pxcts=1a72a066-be90-11f0-a184-8f1203e88b0a; "
+            "_pxvid=1a72961c-be90-11f0-a184-bd7a268dec6f"
         ),
     })
     return s
@@ -243,6 +267,9 @@ def fetch_and_process_event_data(events: List[Dict[str, Any]]) -> List[Dict[str,
     logger.info("Total extracted markets: %d", len(all_rows))
     return all_rows
 
+# ------------------------------------------------------------
+# Main flow
+# ------------------------------------------------------------
 def main() -> None:
     events = find_upcoming_games()
     if not events:
@@ -261,7 +288,12 @@ def main() -> None:
     formatted_dates_str = ','.join([f"'{date}'" for date in formatted_dates])
     engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
     sql_query = f"""SELECT * FROM {SPORTSBOOK_ODDS_TABLE} WHERE OpenDate IN ({formatted_dates_str})"""
-    database_df = pd.read_sql_query(sql_query, engine)
+    try:
+        database_df = pd.read_sql_query(sql_query, engine)
+    except Exception as e:
+        logger.info("Error reading from DB: %s", e)
+        database_df = pd.DataFrame()
+
     if len(database_df) > 0:
         merge_columns = ['EventName', 'BetName', 'BetType', 'OverValue', 'UnderValue']
         check_df = pd.merge(df_events, database_df[merge_columns], on=merge_columns, how='left', indicator=True)
@@ -272,22 +304,16 @@ def main() -> None:
     new_record_count = len(merged_df)
     if new_record_count > 0:
         logger.info(f'Parsed data {new_record_count} new records')
-        merged_df.to_csv(outbound_odds, index=False)
+        merged_df.to_csv(OUTBOUND_ODDS, index=False)
         merged_df.to_sql(SPORTSBOOK_ODDS_TABLE, con=engine, if_exists='append', index=False)
         logger.info(f'Synced sportsbook_odds {new_record_count} records...')
-
     engine.dispose()
     logger.info('Cleanup sync files...')
-    if os.path.exists(outbound_odds):
-        os.remove(outbound_odds)
+    if os.path.exists(OUTBOUND_ODDS):
+        os.remove(OUTBOUND_ODDS)
 
     logger.info('Finished...')
     logger.info('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-
-
-
-
-
 
 if __name__ == "__main__":
     main()

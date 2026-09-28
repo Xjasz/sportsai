@@ -11,7 +11,8 @@ import time
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from nba_api.stats.endpoints import boxscoretraditionalv2, boxscoresummaryv2
+from nba_api.stats.endpoints import boxscoretraditionalv3, boxscoresummaryv2, leaguegamelog
+from nba_api.live.nba.endpoints import boxscore as live_boxscore
 import globals.global_settings as gls
 
 print("Loading.... global_utils")
@@ -262,18 +263,104 @@ def check_files_for_string(directory_path, search_string):
         # print(f"No files found containing '{search_string}'.")
         return False
 
+def season_for_date(date_str: datetime) -> str:
+    start = date_str.year if date_str.month >= 8 else date_str.year - 1
+    string_season = f"{start}-{str((start + 1) % 100).zfill(2)}"
+    return string_season
+
+def get_season_data(date):
+    season = season_for_date(date)
+    season_df = leaguegamelog.LeagueGameLog(
+        season=season,
+        season_type_all_star="Regular Season",
+        player_or_team_abbreviation="T"
+    ).get_data_frames()[0]
+    season_df["GAME_DATE"] = pd.to_datetime(season_df["GAME_DATE"])
+    season_df = season_df.sort_values(["SEASON_ID", "TEAM_ID", "GAME_DATE", "GAME_ID"], kind="mergesort")
+    season_df["WIN"] = (season_df["WL"] == "W").astype(int)
+    season_df["LOSS"] = (season_df["WL"] == "L").astype(int)
+    season_df["WINS"] = season_df.groupby(["SEASON_ID", "TEAM_ID"])["WIN"].cumsum()
+    season_df["LOSSES"] = season_df.groupby(["SEASON_ID", "TEAM_ID"])["LOSS"].cumsum()
+    return season_df
+
+def camel_to_upper_snake(df):
+    df.columns = [re.sub(r'(?<!^)(?=[A-Z])', '_', c).upper() for c in df.columns]
+    return df
+
+rename_map = {
+    'TEAM_TRICODE': 'TEAM_ABBREVIATION',
+    'MINUTES': 'MIN',
+    'FIELD_GOALS_MADE': 'FGM',
+    'FIELD_GOALS_ATTEMPTED': 'FGA',
+    'FIELD_GOALS_PERCENTAGE': 'FG_PCT',
+    'THREE_POINTERS_MADE': 'FG3M',
+    'THREE_POINTERS_ATTEMPTED': 'FG3A',
+    'THREE_POINTERS_PERCENTAGE': 'FG3_PCT',
+    'FREE_THROWS_MADE': 'FTM',
+    'FREE_THROWS_ATTEMPTED': 'FTA',
+    'FREE_THROWS_PERCENTAGE': 'FT_PCT',
+    'REBOUNDS_OFFENSIVE': 'OREB',
+    'REBOUNDS_DEFENSIVE': 'DREB',
+    'REBOUNDS_TOTAL': 'REB',
+    'ASSISTS': 'AST',
+    'STEALS': 'STL',
+    'BLOCKS': 'BLK',
+    'TURNOVERS': 'TO',
+    'FOULS_PERSONAL': 'PF',
+    'POINTS': 'PTS',
+    'PLUS_MINUS_POINTS': 'PLUS_MINUS',
+    'PERSON_ID': 'PLAYER_ID',
+}
+
 def get_game_details(game_id):
-    boxscorea = boxscoretraditionalv2.BoxScoreTraditionalV2(game_id=game_id)
+    boxscorea = boxscoretraditionalv3.BoxScoreTraditionalV3(game_id=game_id)
     player_statsa = boxscorea.player_stats.get_data_frame()
+    player_statsa = camel_to_upper_snake(player_statsa)
+    player_statsa.rename(columns=rename_map, inplace=True)
+    player_statsa['PLAYER_NAME'] = (player_statsa['FIRST_NAME'].fillna('') + ' ' + player_statsa['FAMILY_NAME'].fillna('')).str.strip()
+    player_statsa = player_statsa.rename(columns={"FIRST_NAME": "NICKNAME"})
+
     team_statsa = boxscorea.team_stats.get_data_frame()
+    team_statsa = camel_to_upper_snake(team_statsa)
+
     boxscore_summarya = boxscoresummaryv2.BoxScoreSummaryV2(game_id=game_id)
     game_summarya = boxscore_summarya.game_summary.get_data_frame()
-    other_statsa = boxscore_summarya.other_stats.get_data_frame()
-    inactive_playersa = boxscore_summarya.inactive_players.get_data_frame()
     line_scorea = boxscore_summarya.line_score.get_data_frame()
-    officialsa = boxscore_summarya.officials.get_data_frame()
-    gameinfosa = boxscore_summarya.game_info.get_data_frame()
-    return player_statsa, team_statsa, game_summarya, other_statsa, inactive_playersa, line_scorea, officialsa, gameinfosa
+
+    live_data = live_boxscore.BoxScore(game_id).game.get_dict()
+    live_officials = live_data.get("officials", [])
+    df_officials = pd.json_normalize(live_officials)
+    df_officials = camel_to_upper_snake(df_officials)
+    players = [
+        {**p, "teamId": t.get("teamId")}
+        for t in [live_data.get("homeTeam", {}), live_data.get("awayTeam", {})]
+        for p in t.get("players", [])
+    ]
+    df_players = pd.json_normalize(players)
+    df_players = camel_to_upper_snake(df_players)
+    df_inactive = df_players[df_players["STATUS"] == "INACTIVE"].reset_index(drop=True)
+    df_inactive['GAME_ID'] = game_id
+    df_inactive = df_inactive.rename(columns={"NAME": "PLAYER_NAME"})
+    df_inactive = df_inactive.rename(columns={"PERSON_ID": "PLAYER_ID"})
+    df_inactive['NICKNAME'] = df_inactive['FIRST_NAME']
+    df_inactive['START_POSITION'] = ''
+    df_inactive['MIN'] = ''
+    df_inactive["COMMENT"] = df_inactive["NOT_PLAYING_DESCRIPTION"].apply(
+        lambda x: "OUT - Inactive Player" if pd.isna(x) or str(x).strip() == "" else f"OUT - {x}"
+    )
+    df_inactive = df_inactive.merge(player_statsa[["TEAM_ID", "TEAM_CITY", "TEAM_ABBREVIATION"]].drop_duplicates(), on="TEAM_ID", how="left")
+
+    player_statsa.drop(['NAME_I'], axis=1, inplace=True)
+    player_statsa.drop(['TEAM_NAME'], axis=1, inplace=True)
+    player_statsa.drop(['TEAM_SLUG'], axis=1, inplace=True)
+    player_statsa.drop(['FAMILY_NAME'], axis=1, inplace=True)
+    player_statsa.drop(['PLAYER_SLUG'], axis=1, inplace=True)
+    player_statsa.drop(['JERSEY_NUM'], axis=1, inplace=True)
+    player_statsa = player_statsa.rename(columns={"POSITION": "START_POSITION"})
+
+    df_inactive.drop(['NAME_I'], axis=1, inplace=True)
+    df_officials.drop(['NAME_I'], axis=1, inplace=True)
+    return player_statsa, team_statsa, game_summarya, line_scorea, df_inactive, df_officials
 
 def determine_opponent(row):
     if 'vs.' in row['MATCHUP'] or '@' in row['MATCHUP']:
@@ -301,8 +388,6 @@ def playername_log_to_detail(df_names):
     df_names['PLAYER_NAME'] = df_names['PLAYER_NAME'].str.replace('Craig_PorterJr', 'Craig Porter', regex=False)
     df_names['PLAYER_NAME'] = df_names['PLAYER_NAME'].str.replace('Jakob Poltl', 'Jakob Poeltl', regex=False)
     df_names['PLAYER_NAME'] = df_names['PLAYER_NAME'].str.replace('Brandon Boston Jr', 'Brandon Boston', regex=False)
-
-
     return df_names
 
 def special_namecheck(names_to_check):

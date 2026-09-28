@@ -65,10 +65,10 @@ def scrape_game_officials():
     finally:
         browser_driver.quit()
     game_officials = pd.DataFrame(games_data)
-    game_officials[['REF1', 'REF2', 'REF3']] = game_officials['REFEREES'].str.split(',', expand=True)
+    game_officials[['REF1', 'REF2']] = game_officials['REFEREES'].str.split(',', n=2, expand=True)[[0, 1]]
     unique_officials = pd.read_csv(gls.UNIQUE_OFFICIALS)
     print("Loaded unique_officials...")
-    for ref_col in ['REF1', 'REF2', 'REF3']:
+    for ref_col in ['REF1', 'REF2']:
         game_officials = game_officials.merge(
             unique_officials[['OFFICIAL_ID', 'OFFICIAL_NAME']],
             how='left',
@@ -77,7 +77,7 @@ def scrape_game_officials():
         )
         game_officials = game_officials.rename(columns={'OFFICIAL_ID': f"{ref_col}ID"})
         game_officials = game_officials.drop(columns=['OFFICIAL_NAME'])
-    for ref_id_col in ['REF1ID', 'REF2ID', 'REF3ID']:
+    for ref_id_col in ['REF1ID', 'REF2ID']:
         game_officials[ref_id_col] = pd.to_numeric(game_officials[ref_id_col], errors='coerce').astype('Int64')
     game_officials = game_officials.drop(columns=['REFEREES'])
     game_officials.to_csv(gls.OFFICIALS_TODAY, index=False)

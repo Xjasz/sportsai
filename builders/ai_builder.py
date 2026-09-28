@@ -199,7 +199,6 @@ def set_game_active_positions():
     all_dataframe.to_csv(gls.ALL_FINAL, index=False)
     print('set_game_active_positions completed...')
 
-
 def create_official_past_totals():
     print('create_official_past_totals started...')
     all_dataframe = pd.read_csv(gls.ALL_FINAL)

@@ -507,9 +507,10 @@ def find_recent_games():
     game_ids = fetch_game_ids(oddsgamedate)
     print(f'Checked date {oddsgamedate}.  Returned game_ids ---> {game_ids}')
     dataframesarray = []
+    seasondf = glu.get_season_data(oddsgamedate)
     if len(game_ids) > 0:
         for game_id in game_ids:
-            newdf = glb.create_game_data(game_id=game_id,will_save=False)
+            newdf = glb.create_game_data(game_id=game_id, seasondf=seasondf, will_save=False)
             dataframesarray.append(newdf)
         print("Loaded all games")
     return dataframesarray
