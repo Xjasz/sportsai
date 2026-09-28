@@ -35,6 +35,7 @@ def apply_real_values(pull_actual_data=False, merge_predictions=False):
         merge_all()
         print("Finished merge_all.")
     latest_season_file = f'{gls.SEASON_DATA_DIR}{rns.prediction_season}.csv'
+    latest_df = None
     if os.path.exists(latest_season_file):
         latest_df = pd.read_csv(latest_season_file)
     if pull_actual_data:
@@ -48,6 +49,8 @@ def apply_real_values(pull_actual_data=False, merge_predictions=False):
         if os.path.exists(check_dir_file2):
             os.remove(check_dir_file2)
         if os.path.exists(check_dir_file):
+            if latest_df is None:
+                raise FileNotFoundError(f'No actual data for {check_dir_file}: {latest_season_file} missing and no recent games pulled')
             print(f'Saved check_dir_file -> {check_dir_file}')
             check_df = pd.read_csv(check_dir_file)
             latest_df['GAME_DATE'] = pd.to_datetime(latest_df['GAME_DATE'])
@@ -87,7 +90,7 @@ def calculate_edge(row):
 
 def apply_odds_values():
     print('apply_odds_values started...')
-    odds_file = f'{gls.ODDS_DATA_DIR}/current_odds-{rns.odds_date}.csv'
+    odds_file = f'{gls.ODDS_DATA_DIR}current_odds-{rns.odds_date}.csv'
     if rns.use_database:
         try:
             mys_sv = gls.SPORTSAI_DBSERVER
@@ -122,6 +125,7 @@ def apply_odds_values():
         result_df['VAL_RANGE'] = result_df['VAL_RANGE'].astype(str).str.replace("'", "", regex=False)
         result_df.to_csv(odds_file, index=False)
     odds_df = pd.read_csv(odds_file) if os.path.exists(odds_file) else pd.DataFrame(columns=['GAME_DATE', 'PLAYER_NAME', 'BET_TYPE', 'BET_VAL', 'BET_ODDS', 'VAL_RANGE'])
+    odds_unique = None
     if not odds_df.empty:
         odds_df['GAME_DATE'] = pd.to_datetime(odds_df['GAME_DATE']).dt.date
         odds_sorted = odds_df.sort_values(by=['PLAYER_NAME', 'GAME_DATE', 'BET_TYPE'])
@@ -133,6 +137,8 @@ def apply_odds_values():
     for item in sorted_directory:
         check_dir_file = f'{gls.TOP_OUTPUT_DIR}{item}/season_file2.csv'
         if os.path.exists(check_dir_file):
+            if odds_unique is None:
+                raise RuntimeError('odds_df is empty; no odds_unique available for season_file2 matching')
             check_df = pd.read_csv(check_dir_file)
             if 'PTS' in check_df.columns:
                 TARGET_NAME = 'PTS'
@@ -143,6 +149,8 @@ def apply_odds_values():
             elif 'AST' in check_df.columns:
                 TARGET_NAME = 'AST'
                 df_filtered = odds_unique[odds_unique['BET_TYPE'] == 'Assists']
+            else:
+                raise ValueError(f'season_file2 has none of PTS/REB/AST columns: {check_dir_file}')
 
             check_df['GAME_DATE'] = pd.to_datetime(check_df['GAME_DATE']).dt.date
             total_ondate_target = check_df.loc[check_df['GAME_DATE'].astype(str) == rns.prediction_date, TARGET_NAME].sum()

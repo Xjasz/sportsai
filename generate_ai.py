@@ -699,7 +699,7 @@ def main_process():
     features = all_dataframe[[col for col in all_dataframe.columns if col in FEATURE_USED]]
     total_rows = len(features)
     if total_rows < 5000:
-        mnu.debug_print("Not enough feature data.  Must have more than (10000) resetting....", 0)
+        mnu.debug_print("Not enough feature data.  Must have more than (5000) resetting....", 0)
         return
     targets = all_dataframe[TARGET_USED]
     ########################################################
@@ -827,4 +827,3 @@ run_loop()
 # run_once()
 
 mnu.debug_print("Exiting...")
-exit()
