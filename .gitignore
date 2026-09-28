@@ -2,6 +2,7 @@
 data/*
 !data/load/
 ai/data/*
+.scratch/
 
 active/*
 !active/odds_service.py
