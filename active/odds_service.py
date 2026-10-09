@@ -72,10 +72,7 @@ def create_session() -> requests.Session:
         "Accept-Language": "en-US,en;q=0.5",
         "Accept-Encoding": "gzip, deflate",
         "Connection": "keep-alive",
-        "Cookie": (
-            "pxcts=1a72a066-be90-11f0-a184-8f1203e88b0a; "
-            "_pxvid=1a72961c-be90-11f0-a184-bd7a268dec6f"
-        ),
+        "Cookie": settings.get('fanduel_cookie', ''),
     })
     return s
 
