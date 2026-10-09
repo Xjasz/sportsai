@@ -6,7 +6,7 @@ import pandas as pd
 import time
 import globals.global_settings as gls
 import globals.run_settings as rns
-import get_latest_events as gle, get_latest_injurys as gli
+from webevents import get_latest_events as gle, get_latest_injurys as gli
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -28,7 +28,7 @@ if gls.BROWSER_TYPE == 'FIREFOX':
     service = FirefoxService(gls.GECKO_EXE_LOC)
     options = webdriver.FirefoxOptions()
     options.binary_location = gls.BROWSER_EXE_LOC
-elif gls.BROWSER_TYPE == 'CHOME':
+elif gls.BROWSER_TYPE == 'CHROME':
     service = Service(ChromeDriverManager().install())
     options = webdriver.ChromeOptions()
 options.add_argument("--log-level=3")
@@ -54,8 +54,8 @@ def fetch_and_process_event_data_with_selenium(ex_data):
             url = f"{gls.SPORTSBOOK_API_URL}event-page?_ak=FhMFpcPWXMeyZxOx&eventId={event_id}&tab=player-points&useCombinedTouchdownsVirtualMarket=true"
             print(f'Checking event ID {event_id} with name {event_name} url: {url}')
             driver.get(url)
+            wait = WebDriverWait(driver, 3)
             if gls.BROWSER_TYPE == 'FIREFOX':
-                wait = WebDriverWait(driver, 3)
                 view_raw_button = wait.until(EC.element_to_be_clickable((By.ID, 'rawdata-tab')))
                 view_raw_button.click()
             time.sleep(2)

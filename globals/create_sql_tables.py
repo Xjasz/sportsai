@@ -1,20 +1,18 @@
 import configparser
 import globals.global_settings as gls
-from sqlalchemy import create_engine, text
+from globals import db as dbe
+from sqlalchemy import text
 
 print('Starting...')
 
 config = configparser.ConfigParser()
 config.read(gls.CFG_FILE)
-mys_sv = gls.SPORTSAI_DBSERVER
-mys_us = gls.SPORTSAI_DBUSER
-mys_ps = gls.SPORTSAI_DBPASS
-engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
+engine = dbe.engine()
 
 def create_sportsbook_odds(_engine):
     print('Creating Sportsbook Odds Table...')
     CREATE_SQL_SCRIPT = """
-    CREATE TABLE {} (
+    CREATE TABLE IF NOT EXISTS {} (
         ID INT AUTO_INCREMENT PRIMARY KEY,
         EventName VARCHAR(100),
         OpenDate DATETIME,
@@ -35,7 +33,7 @@ def create_sportsbook_odds(_engine):
 def create_nba_predicitons(_engine):
     print('Creating NBA Predictions Table...')
     CREATE_SQL_SCRIPT = '''
-    CREATE TABLE {} (
+    CREATE TABLE IF NOT EXISTS {} (
         ID INT AUTO_INCREMENT PRIMARY KEY,
         PredictDate DATE,
         EventName VARCHAR(100),
@@ -66,7 +64,7 @@ def create_nba_predicitons(_engine):
 def create_nba_stats(_engine):
     print('Creating NBA Stats Table...')
     CREATE_SQL_SCRIPT = '''
-    CREATE TABLE {} (
+    CREATE TABLE IF NOT EXISTS {} (
         ID INT AUTO_INCREMENT PRIMARY KEY,
         SEASON INT,
         GAME_ID INT,
@@ -105,6 +103,8 @@ def create_nba_stats(_engine):
     _engine.dispose()
     print('Created NBA Stats Table...')
 
+create_sportsbook_odds(engine)
+create_nba_predicitons(engine)
 create_nba_stats(engine)
 
 print('Finished...')
