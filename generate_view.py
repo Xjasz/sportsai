@@ -6,7 +6,7 @@ import pandas as pd
 from nba_api.stats.endpoints import leaguegamefinder
 from openpyxl.styles import PatternFill, Font, Alignment
 from openpyxl.utils import get_column_letter
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 import builders.gamelog_builder as glb
 import globals.global_settings as gls
@@ -35,6 +35,7 @@ def apply_real_values(pull_actual_data=False, merge_predictions=False):
         merge_all()
         print("Finished merge_all.")
     latest_season_file = f'{gls.SEASON_DATA_DIR}{rns.prediction_season}.csv'
+    latest_df = None
     if os.path.exists(latest_season_file):
         latest_df = pd.read_csv(latest_season_file)
     if pull_actual_data:
@@ -48,6 +49,8 @@ def apply_real_values(pull_actual_data=False, merge_predictions=False):
         if os.path.exists(check_dir_file2):
             os.remove(check_dir_file2)
         if os.path.exists(check_dir_file):
+            if latest_df is None:
+                raise FileNotFoundError(f'No actual data for {check_dir_file}: {latest_season_file} missing and no recent games pulled')
             print(f'Saved check_dir_file -> {check_dir_file}')
             check_df = pd.read_csv(check_dir_file)
             latest_df['GAME_DATE'] = pd.to_datetime(latest_df['GAME_DATE'])
@@ -87,7 +90,7 @@ def calculate_edge(row):
 
 def apply_odds_values():
     print('apply_odds_values started...')
-    odds_file = f'{gls.ODDS_DATA_DIR}/current_odds-{rns.odds_date}.csv'
+    odds_file = f'{gls.ODDS_DATA_DIR}current_odds-{rns.odds_date}.csv'
     if rns.use_database:
         try:
             mys_sv = gls.SPORTSAI_DBSERVER
@@ -95,8 +98,8 @@ def apply_odds_values():
             mys_us = gls.SPORTSAI_DBUSER
             mys_ps = gls.SPORTSAI_DBPASS
             engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
-            query = f"SELECT * FROM {mys_db}.sportsbook_odds WHERE OpenDate LIKE '%{rns.odds_date}%'"
-            result_df = pd.read_sql(query, engine)
+            query = text(f'SELECT * FROM {mys_db}.{gls.SPORTSBOOK_ODDS_TABLE} WHERE OpenDate LIKE :d')
+            result_df = pd.read_sql(query, engine, params={'d': f'%{rns.odds_date}%'})
             print("Odds data loaded from database.")
         except Exception as e:
             print(f"Database connection failed: {e}")
@@ -122,6 +125,7 @@ def apply_odds_values():
         result_df['VAL_RANGE'] = result_df['VAL_RANGE'].astype(str).str.replace("'", "", regex=False)
         result_df.to_csv(odds_file, index=False)
     odds_df = pd.read_csv(odds_file) if os.path.exists(odds_file) else pd.DataFrame(columns=['GAME_DATE', 'PLAYER_NAME', 'BET_TYPE', 'BET_VAL', 'BET_ODDS', 'VAL_RANGE'])
+    odds_unique = None
     if not odds_df.empty:
         odds_df['GAME_DATE'] = pd.to_datetime(odds_df['GAME_DATE']).dt.date
         odds_sorted = odds_df.sort_values(by=['PLAYER_NAME', 'GAME_DATE', 'BET_TYPE'])
@@ -133,6 +137,8 @@ def apply_odds_values():
     for item in sorted_directory:
         check_dir_file = f'{gls.TOP_OUTPUT_DIR}{item}/season_file2.csv'
         if os.path.exists(check_dir_file):
+            if odds_unique is None:
+                raise RuntimeError('odds_df is empty; no odds_unique available for season_file2 matching')
             check_df = pd.read_csv(check_dir_file)
             if 'PTS' in check_df.columns:
                 TARGET_NAME = 'PTS'
@@ -143,6 +149,8 @@ def apply_odds_values():
             elif 'AST' in check_df.columns:
                 TARGET_NAME = 'AST'
                 df_filtered = odds_unique[odds_unique['BET_TYPE'] == 'Assists']
+            else:
+                raise ValueError(f'season_file2 has none of PTS/REB/AST columns: {check_dir_file}')
 
             check_df['GAME_DATE'] = pd.to_datetime(check_df['GAME_DATE']).dt.date
             total_ondate_target = check_df.loc[check_df['GAME_DATE'].astype(str) == rns.prediction_date, TARGET_NAME].sum()
@@ -247,7 +255,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     print(f'Generated Excel file total rows {max_rows}')
 
 
-    print(f'Setting Ref Headers...')
+    print('Setting Ref Headers...')
     for col in range(67, 155):
         col_letter = get_column_letter(col)
         worksheet.column_dimensions[col_letter].width = 5
@@ -257,7 +265,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     yellow_columns = ['BO', 'BR', 'BU', 'BX', 'CA', 'CD']
     peach_columns = ['CG', 'CJ', 'CM', 'CP', 'CS', 'CV']
 
-    print(f'Setting Ref Columns...')
+    print('Setting Ref Columns...')
     for col in yellow_columns:
         for row in range(1, max_rows):
             cell = worksheet[f'{col}{row}']
@@ -267,7 +275,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
             cell = worksheet[f'{col}{row}']
             cell.fill = light_peach_fill
 
-    print(f'Setting Ref Value Columns...')
+    print('Setting Ref Value Columns...')
     worksheet['ED1'] = 'BELOW AVG'
     worksheet['EE1'] = 'ABOVE AVG'
     worksheet['EF1'] = 'MINIMUM'
@@ -283,7 +291,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     worksheet['EI2'] = 6
     worksheet['EJ2'] = 8
 
-    print(f'Setting Ref Calc Columns...')
+    print('Setting Ref Calc Columns...')
     worksheet['CY1'] = 'LOW4'
     worksheet['CZ1'] = 'HIGH4'
     worksheet['DA1'] = 'LOW12'
@@ -315,7 +323,7 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     for cell_reference in cells_to_align:
         worksheet[cell_reference].alignment = header_alignment
 
-    print(f'Adding Ref Formulas...')
+    print('Adding Ref Formulas...')
     add_multiple_formulas(worksheet, max_rows)
 
     print('Setup Sheet Headers...')
@@ -594,7 +602,8 @@ def add_multiple_formulas(worksheet, max_rows):
         worksheet[f'DE{row}'] = f'=IF(DA{row}>=$EI$2, IF(M{row}>K{row}, -1, IF(M{row}<$EF$2, 0, 1)), 0)'
         worksheet[f'DF{row}'] = f'=IF(DB{row}>=$EJ$2, IF(M{row}<K{row}, -1, IF(M{row}<$EF$2, 0, 1)), 0)'
 
-print('Starting...')
-apply_real_values(pull_actual_data, merge_predictions)
-apply_odds_values()
-print('Finished...')
+if __name__ == '__main__':
+    print('Starting...')
+    apply_real_values(pull_actual_data, merge_predictions)
+    apply_odds_values()
+    print('Finished...')
