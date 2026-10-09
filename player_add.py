@@ -1,6 +1,6 @@
 
-from builders import playerdetail_builder as pdb
-from nba_api.stats.endpoints import commonallplayers
+from builders import playerdetail_builder as pdb  # noqa: F401
+from nba_api.stats.endpoints import commonallplayers  # noqa: F401
 import pandas as pd
 from pathlib import Path
 

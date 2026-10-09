@@ -2,8 +2,10 @@ from nba_api.stats.endpoints import commonallplayers
 import pandas as pd
 from pathlib import Path
 from builders import playerdetail_builder as pdb
+import globals.global_settings as gls
+import globals.run_settings as rns
 
-directory = Path("data/game/2025")
+directory = Path(gls.GAMES_DATA_DIR) / rns.prediction_season
 totalcount = 0
 players = set()
 print('Starting...')
