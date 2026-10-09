@@ -20,8 +20,8 @@ Ensure you have the following installed:
 ### Setup Steps
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/xjasz/sports-ai.git
-   cd sports-ai
+   git clone https://github.com/xjasz/sportsai.git
+   cd sportsai
    ```
    
 2. **Create a Virtual Environment**:
@@ -39,14 +39,14 @@ Ensure you have the following installed:
    - Unzip the `data/load/load_data.zip` after cloning project, it contains all games and player information up to late January 2025.
    - `prediction_season` in `globals/run_settings.py` is the newest season folder under `data/game/` (date-based fallback); override it there if needed.  When running the processes the prediction will automatically attempt to run predictions for the current day.
    - Edit the `use_database` in `globals/run_settings.py` and set it to `True` if you want to generate the tables the run `globals/create_sql_tables.py` to generate the initial tables.
-   - Edit the `current_season_only` in `globals/run_settings.py` and set it to `True` after the first run of everything. Its set as `False` to generate all the initial data the first time.
+   - Set `current_season_only` in `globals/run_settings.py` to `False` for the first run so every season file is generated, then back to `True` (the default) for daily runs.
    - There is an automated process that uses Selenium and retrieves extra information from fanduel.  If you decide to use the database then either run `active/odds_service.py` separately as a service each day or run it once before the 3rd process to fetch the latest Over/Under odds for Points, Assists, and Rebounds from Fanduel. Its currently set to use Firefox but can easily be changed to use another Browser like Chrome if needed.
    - The ENVIRONMENT VARIABLES in `globals/global_settings.py` need to be changed to point to your database if `use_database` in `globals/run_settings.py` is set to `True`.
    - To speed up model training with an NVIDIA GPU you should install PyTorch from `https://pytorch.org/` and select the correct CUDA version to use.
 
 5. **Final Settings**:
    - The 1st process is `generate_data.py` - this will generate every game up to the current day.  Note: It will use latest_gamedate in `globals/config.ini` and get any game from that date up to the current day, you don't need to edit `latest_gamedate` unless you want to fetch games from further back in time.
-   - The 2nd process is `generate_ai.py` this will use all historical information from over 20 years of games and dynamically change hyper parameters, feature information, etc generating models. By default it is running the loop which will run 100 times with randomized settings. 
+   - The 2nd process is `generate_ai.py` this will use all historical information from over 20 years of games and dynamically change hyper parameters, feature information, etc generating models. By default it is running the loop which will run 1000 times with randomized settings. 
    - The 3rd process is `generate_view.py` this will use the best models generated in the 2nd process and construct an excel file with the current prediction results for Points, Rebounds, and Assists.  These results are located in `data/ai/top/` and are named (`MERGE_PTS.xlsx`,`MERGE_AST.xlsx`,`MERGE_REB.xlsx`)
    
 
