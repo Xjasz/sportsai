@@ -15,7 +15,7 @@ if directory.exists():
         df = pd.read_csv(file_path, low_memory=False)
         mask = df["COMMENT"].isna() & (df["POSITION"].isna() | (df["POSITION"].astype(str).str.strip() == ""))
         for _, row in df.loc[mask, ["PLAYER_ID", "PLAYER_NAME"]].dropna().iterrows():
-            players.add((str(row["PLAYER_ID"]), str(row["PLAYER_NAME"])))
+            players.add((int(row["PLAYER_ID"]), str(row["PLAYER_NAME"])))
             print(f'File: {file_path} ---> Unknown PlayerId {str(row["PLAYER_ID"])} Player {str(row["PLAYER_NAME"])}')
             totalcount +=1
 else:
