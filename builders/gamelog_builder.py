@@ -155,19 +155,22 @@ def create_recent_games(skip_today=True):
     current_date = datetime.today().date()
     latest_gamedate = datetime.strptime(mu.read_from_config('latest_gamedate', 1), '%Y-%m-%d').date()
     valid_skip_games_array = pd.read_csv(gls.VALID_SKIP_DATES)['VALID_DATE'].values if os.path.exists(gls.VALID_SKIP_DATES) else []
-    seasondf = mu.get_season_data(current_date)
-    year_folder = f'{gls.GAMES_DATA_DIR}{rns.prediction_season}/'
+    season_dfs = {}
     while latest_gamedate < current_date or (latest_gamedate == current_date and not skip_today):
         nd_str = latest_gamedate.strftime('%Y-%m-%d')
         if nd_str not in valid_skip_games_array:
             game_ids = fetch_game_ids(latest_gamedate)
             print(f'Checked date {latest_gamedate}.  Returned game_ids ---> {game_ids}')
             if len(game_ids) > 0:
+                season = mu.season_for_date(latest_gamedate)
+                if season not in season_dfs:
+                    season_dfs[season] = mu.get_season_data(latest_gamedate)
+                year_folder = f'{gls.GAMES_DATA_DIR}{season[:4]}/'
                 for game_id in game_ids:
                     if game_file_exists(game_id, year_folder):
-                        print(f"Skipping game {game_id} — already exists.")
+                        print(f"Skipping game {game_id} - already exists.")
                         continue
-                    create_game_data(game_id=game_id, seasondf=seasondf)
+                    create_game_data(game_id=game_id, seasondf=season_dfs[season])
                 print("Saved all valid games")
             else:
                 if latest_gamedate != current_date:
