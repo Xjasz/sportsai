@@ -116,14 +116,12 @@ def optimized_createmainrollingtotals(gl_df, gl_path):
         new_columns_df = pd.DataFrame(new_columns, index=gl_df.index)
         gl_df = pd.concat([gl_df, new_columns_df], axis=1)
         gl_df.sort_values(by='GAME_DATE', ascending=True, inplace=True)
-        gl_df.to_csv(gl_path, index=False)
         gl_df.sort_values(by=['SEASON', 'PLAYER_ID', 'GAME_DATE'], ascending=True, inplace=True)
         for col in roll_columns:
             gl_df[f'RT3H_{col}'] = rolling_home_or_away_consecutive(gl_df, col, 1).round(2)
             gl_df[f'RT3H_{col}'] = gl_df[f'RT3H_{col}'].round(2).fillna(0)
             gl_df[f'RT3A_{col}'] = rolling_home_or_away_consecutive(gl_df, col, 0).round(2)
             gl_df[f'RT3A_{col}'] = gl_df[f'RT3A_{col}'].round(2).fillna(0)
-        gl_df.to_csv(gl_path, index=False)
         for col in roll_columns:
             gl_df[f'RTZ_{col}'] = gl_df[f'RT3H_{col}'] + gl_df[f'RT3A_{col}']
             gl_df = gl_df.drop([f'RT3H_{col}', f'RT3A_{col}'], axis=1)
@@ -291,7 +289,7 @@ def track_player_out_events():
         print(f'Checking Season -> {item}')
         directory = f'{gls.GAMES_DATA_DIR}{item}/'
         PLAYER_TRACKER = {}
-        for file_name in os.listdir(directory):
+        for file_name in sorted(os.listdir(directory)):
             file_path = os.path.join(directory, file_name)
             if not glu.file_contains_value(file_path, 'GAMES_IN'):
                 df_log = pd.read_csv(file_path)
@@ -384,12 +382,13 @@ def set_opponents():
 def set_positions_and_cleanup():
     print('set_positions_and_cleanup started...')
     df_all_details = pd.DataFrame()
-    for filename in os.listdir(gls.PLAYER_DETAIL_DIR):
+    for filename in sorted(os.listdir(gls.PLAYER_DETAIL_DIR)):
         file_path = os.path.join(gls.PLAYER_DETAIL_DIR, filename)
         df_detail = pd.read_csv(file_path)
         if not df_detail.empty:
             df_all_details = pd.concat([df_all_details, df_detail])
     df_all_details.sort_values(by=['SEASON', 'TEAM'], ascending=True, inplace=True)
+    df_all_details = df_all_details.drop_duplicates(subset=['PLAYER_ID', 'TEAM_ID', 'SEASON'], keep='last')
     print('Loaded player details..')
     for item in os.listdir(gls.GAMES_DATA_DIR):
         if rns.current_season_only and rns.prediction_season not in item:

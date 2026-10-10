@@ -29,21 +29,24 @@ def remove_previous_files():
 def create_all_details():
     print('create_all_details... Started')
     df_all_details = pd.DataFrame()
-    for filename in os.listdir(gls.PLAYER_DETAIL_DIR):
+    for filename in sorted(os.listdir(gls.PLAYER_DETAIL_DIR)):
         file_path = os.path.join(gls.PLAYER_DETAIL_DIR, filename)
         df_detail = pd.read_csv(file_path)
         if not df_detail.empty:
             df_all_details = pd.concat([df_all_details, df_detail])
     df_all_details.sort_values(by=['SEASON', 'TEAM'], ascending=True, inplace=True)
+    df_all_details = df_all_details.drop_duplicates(subset=['PLAYER_ID', 'TEAM_ID', 'SEASON'], keep='last')
     df_all_details.to_csv(gls.ALL_DETAILS, index=False)
     print('create_all_details... Finished')
 
 def create_all_logs():
     print('create_all_logs started...')
     df_all_logs = pd.DataFrame()
-    if rns.current_season_only and os.path.exists(gls.ALL_PARTIALS):
+    season_files = sorted(os.listdir(gls.SEASON_DATA_DIR))
+    partial_seasons = {int(f[:4]) for f in season_files if rns.prediction_season not in f}
+    all_partials = pd.read_csv(gls.ALL_PARTIALS) if rns.current_season_only and os.path.exists(gls.ALL_PARTIALS) else None
+    if all_partials is not None and set(all_partials['SEASON']) == partial_seasons:
         print('Loading from all partials')
-        all_partials = pd.read_csv(gls.ALL_PARTIALS)
         final_season = f'{rns.prediction_season}.csv'
         file_path = os.path.join(gls.SEASON_DATA_DIR, final_season)
         df_log = pd.read_csv(file_path, dtype=mu.get_col_types(file_path))
@@ -53,7 +56,7 @@ def create_all_logs():
             df_all_logs.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True, inplace=True)
             df_all_logs.to_csv(gls.ALL_LOGS, index=False)
     else:
-        for file_name in sorted(os.listdir(gls.SEASON_DATA_DIR)):
+        for file_name in season_files:
             if rns.prediction_season in file_name and not df_all_logs.empty:
                 df_all_logs.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True, inplace=True)
                 df_all_logs.to_csv(gls.ALL_PARTIALS, index=False)
