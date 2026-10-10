@@ -10,12 +10,7 @@ from globals import global_utils as mu
 from datetime import datetime, timedelta
 from nba_api.stats.endpoints import leaguegamefinder
 
-pd.set_option('display.max_colwidth', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-
-print("Loaded.... gamelog_builder")
+print("Loading.... gamelog_builder")
 
 #########################################################################################################################################
 ####  CREATE/UPDATE GAME LOGS IN DIRECTORY -> '/DATA/GAME/{SEASON}/'

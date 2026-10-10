@@ -4,11 +4,6 @@ import pandas as pd
 import globals.global_settings as gls
 import globals.global_utils as glu
 
-pd.set_option('display.max_colwidth', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-
 def merge_predictions(merge_pred_file, pred_type):
     merged_df = pd.read_csv(merge_pred_file, nrows=0)
     columns = merged_df.columns

@@ -30,7 +30,7 @@ POSITION_TOSIZE_MAPPER = {'Guard': {'avg_height': "6-3", 'avg_weight': 185},'For
 BLOAT_TODTYPE_MAPPER = {'EVENT_TYPE': str, 'PLAYER_ID': str}
 
 #GLOBAL ARRAYS
-BLOAT_KEYWORDS = ['fired', 'hired', 'owner', 'promote', 'coach \(date approximate\)', 're-signed as', 'resign', 'reassign', 're-assigned','administrative leave', 'leave of abs', 'retired as', 'replaced as', 'coach fined', 'head coach suf', 'suspended as','re-sign as head', 'coach had surgery', 'replaced as', 'fined as', 'on head coach', 'director of player programs', 'demoted', 'coach missed','coach underwent', 'coach diagnosed', 'returned as', 'as head coach', 'retained as', 'as head of', 'assistant', 'manager', 'scout', 'president']
+BLOAT_KEYWORDS = ['fired', 'hired', 'owner', 'promote', r'coach \(date approximate\)', 're-signed as', 'resign', 'reassign', 're-assigned','administrative leave', 'leave of abs', 'retired as', 'replaced as', 'coach fined', 'head coach suf', 'suspended as','re-sign as head', 'coach had surgery', 'replaced as', 'fined as', 'on head coach', 'director of player programs', 'demoted', 'coach missed','coach underwent', 'coach diagnosed', 'returned as', 'as head coach', 'retained as', 'as head of', 'assistant', 'manager', 'scout', 'president']
 BLOAT_ALTKEYWORDS = [r',,,trade|,,,3-team|,,,4-team|,,,sent|,,,received|,,,team|,,,activated|,,,placed|,,,2018|,,,assigned|,,,col|,CHI,,,|,CLE,,,']
 BLOAT_ALTKEYWORDS2 = [r',,']
 
