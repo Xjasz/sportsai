@@ -6,9 +6,10 @@ import pandas as pd
 from nba_api.stats.endpoints import leaguegamefinder
 from openpyxl.styles import PatternFill, Font, Alignment
 from openpyxl.utils import get_column_letter
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 import builders.gamelog_builder as glb
+import globals.db as dbe
 import globals.global_settings as gls
 import globals.global_utils as glu
 import globals.run_settings as rns
@@ -93,11 +94,8 @@ def apply_odds_values():
     odds_file = f'{gls.ODDS_DATA_DIR}current_odds-{rns.odds_date}.csv'
     if rns.use_database:
         try:
-            mys_sv = gls.SPORTSAI_DBSERVER
             mys_db = gls.SPORTSAI_DBNAME
-            mys_us = gls.SPORTSAI_DBUSER
-            mys_ps = gls.SPORTSAI_DBPASS
-            engine = create_engine(f'mysql+mysqlconnector://{mys_us}:{mys_ps}@{mys_sv}')
+            engine = dbe.engine()
             query = text(f'SELECT * FROM {mys_db}.{gls.SPORTSBOOK_ODDS_TABLE} WHERE OpenDate LIKE :d')
             result_df = pd.read_sql(query, engine, params={'d': f'%{rns.odds_date}%'})
             print("Odds data loaded from database.")
@@ -377,8 +375,8 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
     print(f'SetColor: (AVG_{TARGET_NAME},{TARGET_NAME},PRED,BET_VAL)...')
     yellow_fill = PatternFill(start_color='FFFF00', fill_type='solid')
     for row in worksheet.iter_rows(max_col=len(excel_df.columns), max_row=max_row):
-        for cell in row:
-            column_name = excel_df.columns[row.index(cell)]
+        for idx, cell in enumerate(row):
+            column_name = excel_df.columns[idx]
             if column_name in [f'AVG_{TARGET_NAME}', TARGET_NAME, 'PRED', 'BET_VAL']:
                 cell.fill = yellow_fill
 
