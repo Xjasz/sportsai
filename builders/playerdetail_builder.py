@@ -38,9 +38,9 @@ def fill_missing_data(pos, reference):
     curr_pos = pos.iloc[0]
     if curr_pos in gls.POSITION_TOINT_MAPPER:
         if reference == 'WEIGHT':
-            return gls.POSITION_TOSIZE_MAPPER[curr_pos]['avg_weight']
+            return gls.POSITION_TOSIZE_MAPPER[curr_pos.split('-')[0]]['avg_weight']
         if reference == 'HEIGHT':
-            return gls.POSITION_TOSIZE_MAPPER[curr_pos]['avg_height']
+            return gls.POSITION_TOSIZE_MAPPER[curr_pos.split('-')[0]]['avg_height']
     raise ValueError(f"Missing or invalid position {pos}")
 
 def fix_schools():
@@ -183,7 +183,7 @@ def removing_invalid_player(game_log_dir, player_id):
             df_log = pd.read_csv(file_path)
             player_exists = (df_log['PLAYER_ID'] == int(player_id)).any()
             if player_exists:
-                df_log = df_log[df_log['PLAYER_ID'] != player_id]
+                df_log = df_log[df_log['PLAYER_ID'] != int(player_id)]
                 print(f"Removed PlayerID: ({player_id}) from {file_path}")
                 df_log.to_csv(file_path, index=False)
 
