@@ -14,11 +14,6 @@ import globals.global_settings as gls
 import globals.global_utils as glu
 import globals.run_settings as rns
 
-pd.set_option('display.max_colwidth', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-
 #########################################################################################################################################
 ####  CREATE/UPDATE REAL VALUES TO PREVIOUS PREDICTED TARGET GAMES -> '/DATA/SEASON/'
 # Generates the Target values and applies it to Prediction Outputs
@@ -43,6 +38,9 @@ def apply_real_values(pull_actual_data=False, merge_predictions=False):
         dataframesarray = find_recent_games()
         if len(dataframesarray) > 0:
             latest_df = pd.concat(dataframesarray, ignore_index=True)
+    if latest_df is not None:
+        latest_df['GAME_DATE'] = pd.to_datetime(latest_df['GAME_DATE'])
+        latest_df = latest_df.set_index(['PLAYER_ID', 'GAME_DATE'])
     sorted_directory = sorted(os.listdir(gls.TOP_OUTPUT_DIR), reverse=True)
     for item in sorted_directory:
         check_dir_file = f'{gls.TOP_OUTPUT_DIR}{item}/season_file.csv'
@@ -54,13 +52,10 @@ def apply_real_values(pull_actual_data=False, merge_predictions=False):
                 raise FileNotFoundError(f'No actual data for {check_dir_file}: {latest_season_file} missing and no recent games pulled')
             print(f'Saved check_dir_file -> {check_dir_file}')
             check_df = pd.read_csv(check_dir_file)
-            latest_df['GAME_DATE'] = pd.to_datetime(latest_df['GAME_DATE'])
             check_df['GAME_DATE'] = pd.to_datetime(check_df['GAME_DATE'])
             check_df = check_df.set_index(['PLAYER_ID', 'GAME_DATE'])
-            latest_df = latest_df.set_index(['PLAYER_ID', 'GAME_DATE'])
             check_df.update(latest_df[['PTS', 'REB', 'AST']])
             check_df = check_df.reset_index()
-            latest_df = latest_df.reset_index()
             check_df.to_csv(check_dir_file2, index=False)
             print(f'Saved check_dir_file2 -> {check_dir_file2}')
     print('apply_real_values completed...')
@@ -190,8 +185,6 @@ def apply_odds_values():
             folderpath = f'{gls.TOP_OUTPUT_DIR}{item}/'
             check_dir_file3 = f'{folderpath}season_file3.csv'
             check_df = check_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
-            check_df.to_csv(check_dir_file3, index=False)
-            print(f'Saved check_dir_file3 -> {check_dir_file3}')
             columns_to_move = ['START_POSITION','WEEK_PLAYTIME','LAST_GAME_DAYS','DISTANCE','ALTITUDE','IS_HOME','TEAM_OUT','OPP_OUT',
                                'OPP_PLAYER_ID','OPP_PLAYER_NAME',
                                f'OPP_DEF_{TARGET_NAME}1',f'OPP_DEF_{TARGET_NAME}3',f'OPP_DEF_{TARGET_NAME}AVG','OPP_WEEK_PLAYTIME', 'OPP_LAST_GAME_DAYS',
@@ -201,7 +194,6 @@ def apply_odds_values():
             new_column_order = other_columns + columns_to_move
             check_df = check_df[new_column_order]
             check_df.reset_index(drop=True, inplace=True)
-            check_df.to_csv(check_dir_file3, index=False)
 
             print('Calculating Probabilities')
             df_sorted = check_df.sort_values(by=['PLAYER_ID', 'GAME_DATE'])
@@ -216,7 +208,6 @@ def apply_odds_values():
                     check_df.at[last_index, 'PROB_5'] = prob_5
                     check_df.at[last_index, 'PROB_10'] = prob_10
             check_df = check_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
-            check_df.to_csv(check_dir_file3, index=False)
 
             print('Apply Edge')
             check_df['BET_ODDS'] = pd.to_numeric(check_df['BET_ODDS'], errors='coerce')
@@ -224,7 +215,6 @@ def apply_odds_values():
             check_df['EDGE'] = check_df['EDGE'].astype(float)
             check_df['EDGE'] = check_df.apply(calculate_edge, axis=1)
             check_df = check_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
-            check_df.to_csv(check_dir_file3, index=False)
 
             print("moving officials to end...")
             official_columns = [col for col in check_df.columns if col.startswith("OFFICIAL1_") or col.startswith("OFFICIAL2_")]
@@ -232,6 +222,7 @@ def apply_odds_values():
             check_df = check_df[other_columns + official_columns]
             check_df = check_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
             check_df.to_csv(check_dir_file3, index=False)
+            print(f'Saved check_dir_file3 -> {check_dir_file3}')
 
             generate_excelfile(check_df, item, TARGET_NAME)
     print('apply_odds_values completed...')

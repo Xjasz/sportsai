@@ -9,11 +9,9 @@ from unidecode import unidecode
 
 print("Loading.... prediction_builder")
 
-# Pandas Setup
-pd.set_option('display.max_colwidth', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
+def is_prediction_file(file_path):
+    df_log = pd.read_csv(file_path, nrows=1)
+    return 'IS_PREDICTOR' in df_log.columns and df_log['IS_PREDICTOR'][0] == 1
 
 def remove_old_predictions():
     print('remove_old_predictions...')
@@ -25,14 +23,7 @@ def remove_old_predictions():
         directory = f'{gls.GAMES_DATA_DIR}{item}/'
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
-            df_log = pd.read_csv(file_path)
-            remove_file = False
-            if 'IS_PREDICTOR' in df_log.columns:
-                first_row = df_log.head(1)
-                is_pred = first_row['IS_PREDICTOR'][0]
-                if is_pred == 1:
-                    remove_file = True
-            if remove_file:
+            if is_prediction_file(file_path):
                 print(f'File prediction exists removing {file_path}..')
                 os.remove(file_path)
 

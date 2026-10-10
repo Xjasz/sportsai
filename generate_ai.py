@@ -23,11 +23,6 @@ from globals import global_utils as mnu
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 np.set_printoptions(formatter={'float': '{:0.3f}'.format})
-pd.set_option('display.max_colwidth', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-
 mnu.debug_print(f'Tensorflow -- ver:{tf.__version__}')
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:

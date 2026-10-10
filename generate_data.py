@@ -10,11 +10,6 @@ from globals import global_utils as glu
 from builders import ai_builder as aib, gamelog_builder as cgl, prediction_builder as gnd, playerdetail_builder as pld
 from unidecode import unidecode
 
-pd.set_option('display.max_colwidth', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-
 #########################################################################################################################################
 ####  CREATE/UPDATE GAME LOGS INTO SEASONS IN DIRECTORY -> '/DATA/SEASON/'
 # Generates remaining gamelog data for seasons.
@@ -22,6 +17,19 @@ pd.set_option('display.width', None)
 # SET 'current_season_only' to 'TRUE' to overwrite current season gamelogs.
 #########################################################################################################################################
 OUT_KEYWORDS_SET = {'INJ', 'NOT WITH TEAM', 'MWT', 'DNT', 'DID NOT TRAVEL', 'NWT', 'SUSPENSION', 'PERSONAL', 'INACTIVE', 'DND', 'DID NOT DRESS', 'DNP_TRADE'}
+
+def comment_keyword(comment):
+    if pd.isna(comment) or len(comment) == 0:
+        return ''
+    keyword = str(comment.split('-')[0].strip()).upper()
+    return 'OUT' if any(status_keyword in keyword for status_keyword in OUT_KEYWORDS_SET) else keyword
+
+def season_dirs(prediction_only=False):
+    for item in os.listdir(gls.GAMES_DATA_DIR):
+        if (prediction_only or rns.current_season_only) and rns.prediction_season not in item:
+            continue
+        print(f'Checking Season -> {item}')
+        yield item, f'{gls.GAMES_DATA_DIR}{item}/'
 
 def optimized_rolling_averages(df, col, count):
     return df.groupby(['SEASON', 'PLAYER_ID'])[col].transform(lambda x: x.shift().rolling(window=count, min_periods=1).mean())
@@ -137,10 +145,6 @@ def set_extra_stats(gl_df, gl_path):
             gl_df[f'PREV_{column}'] = gl_df.groupby(['SEASON', 'PLAYER_ID'])[column].shift(fill_value=0)
         change_made = True
     if 'MAX_PTS' not in gl_df.columns:
-        for column in stats_columns:
-            max_column = f'MAX_{column}'
-            if max_column not in gl_df.columns:
-                gl_df[max_column] = 0
         for column in stats_columns:
             max_column = f'MAX_{column}'
             gl_df[max_column] = gl_df.groupby(['PLAYER_ID', 'SEASON'])[column].transform(lambda x: x.cummax().shift(1)).fillna(0).astype(int)
@@ -283,11 +287,7 @@ def combine_games_to_season():
 
 def track_player_out_events():
     print('track_player_out_events started...')
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         PLAYER_TRACKER = {}
         for file_name in sorted(os.listdir(directory)):
             file_path = os.path.join(directory, file_name)
@@ -302,11 +302,7 @@ def track_player_out_events():
                     comment = row['COMMENT']
                     start_position = row['START_POSITION']
                     player_id = row['PLAYER_ID']
-                    keyword = ''
-                    if pd.notna(comment) and len(comment) > 0:
-                        keyword = comment.split('-')[0].strip()
-                        keyword = str(keyword).upper()
-                        keyword = 'OUT' if any(status_keyword in keyword for status_keyword in OUT_KEYWORDS_SET) else keyword
+                    keyword = comment_keyword(comment)
                     player_data = PLAYER_TRACKER.get(player_id, [0, 0, 0, 0, 0])
                     if keyword == '':
                         player_data[0] = player_data[0] + 1
@@ -334,11 +330,7 @@ def set_distance_altitude():
     distance_df = pd.read_csv(gls.LOCATION_DISTANCES)
     with open(gls.TEAM_LOCATIONS_JSON, 'r', encoding='utf-8') as file:
         altitudes_json = json.load(file)
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
             if not glu.file_contains_value(file_path, 'DISTANCE'):
@@ -361,11 +353,7 @@ def set_distance_altitude():
 
 def set_opponents():
     print('set_opponents started...')
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
             if not glu.file_contains_value(file_path, 'OPP_NAME'):
@@ -381,20 +369,9 @@ def set_opponents():
 
 def set_positions_and_cleanup():
     print('set_positions_and_cleanup started...')
-    df_all_details = pd.DataFrame()
-    for filename in sorted(os.listdir(gls.PLAYER_DETAIL_DIR)):
-        file_path = os.path.join(gls.PLAYER_DETAIL_DIR, filename)
-        df_detail = pd.read_csv(file_path)
-        if not df_detail.empty:
-            df_all_details = pd.concat([df_all_details, df_detail])
-    df_all_details.sort_values(by=['SEASON', 'TEAM'], ascending=True, inplace=True)
-    df_all_details = df_all_details.drop_duplicates(subset=['PLAYER_ID', 'TEAM_ID', 'SEASON'], keep='last')
+    df_all_details = glu.load_player_details()
     print('Loaded player details..')
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
             if glu.file_contains_value(file_path, 'NICKNAME'):
@@ -433,11 +410,7 @@ def set_positions_and_cleanup():
 
 def set_player_opponents():
     print('set_player_opponents started...')
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
             if not glu.file_contains_value(file_path, 'MATCHED_OPPONENT'):
@@ -488,11 +461,7 @@ def set_player_opponents():
 
 def set_out_totals():
     print('set_out_totals started...')
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         for file_name in os.listdir(directory):
                 file_path = os.path.join(directory, file_name)
                 if not glu.file_contains_value(file_path, 'TEAM_OUT_START'):
@@ -519,11 +488,7 @@ def set_out_totals():
 
 def set_current_wins():
     print('set_current_wins started...')
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
             if not glu.file_contains_value(file_path, 'TWIN'):
@@ -541,11 +506,7 @@ def set_invalid_players():
     all_keywords = {'DNP': 0, 'OUT': 0}
     t1_keywords = {'TEAM':'', 'DNP': 0, 'OUT': 0}
     t2_keywords = {'TEAM':'', 'DNP': 0, 'OUT': 0}
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
             if not glu.file_contains_value(file_path, 'TEAM_DNP'):
@@ -557,9 +518,7 @@ def set_invalid_players():
                     if row['IS_HOME'] == 0 and len(t2_keywords['TEAM']) == 0:
                         t2_keywords['TEAM'] = row['TEAM_NAME']
                     if pd.notna(comment) and len(comment) > 0:
-                        keyword = comment.split('-')[0].strip()
-                        keyword = str(keyword).upper()
-                        keyword = 'OUT' if any(status_keyword in keyword for status_keyword in OUT_KEYWORDS_SET) else keyword
+                        keyword = comment_keyword(comment)
                         if keyword not in all_keywords:
                             print(f'Issue checking {keyword} not in -> {all_keywords}')
                         else:
@@ -580,25 +539,17 @@ def set_invalid_players():
 
 def fix_prediction_values():
     print('fix_prediction_values...')
-    pred_year = rns.prediction_season
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if pred_year not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs(prediction_only=True):
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
-            df_log = pd.read_csv(file_path)
-            if 'IS_PREDICTOR' in df_log.columns:
-                first_row = df_log.head(1)
-                is_pred = first_row['IS_PREDICTOR'][0]
-                if is_pred == 1:
-                    df_log['TWIN'] = df_log['WINS']
-                    df_log['TLOSS'] = df_log['LOSSES']
-                    df_log['OWIN'] = df_log['OPP_WINS']
-                    df_log['OLOSS'] = df_log['OPP_LOSSES']
-                    df_log.to_csv(file_path, index=False)
-                    print(f'Updated pred values for {file_path}')
+            if gnd.is_prediction_file(file_path):
+                df_log = pd.read_csv(file_path)
+                df_log['TWIN'] = df_log['WINS']
+                df_log['TLOSS'] = df_log['LOSSES']
+                df_log['OWIN'] = df_log['OPP_WINS']
+                df_log['OLOSS'] = df_log['OPP_LOSSES']
+                df_log.to_csv(file_path, index=False)
+                print(f'Updated pred values for {file_path}')
 
 def clear_calculations():
     print('clear_calculations started...')
@@ -606,11 +557,7 @@ def clear_calculations():
                     'OPP_DISTANCE', 'TWIN', 'TLOSS','OWIN','OLOSS','GAMES_IN', 'GAMES_OUT', 'GAMES_CONT', 'GAMES_START',
                     'GAMES_BENCH','TEAM_OUT_START','TEAM_OUT_BENCH','OPP_OUT_START','OPP_OUT_BENCH','ALTITUDE','POSITION'
                     ,'DEF_PTS','DEF_AST','DEF_REB','OPP_PLAYER_ID','MATCHED_OPPONENT','OPP_PLAYER_NAME']
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
-        print(f'Checking Season -> {item}')
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
+    for item, directory in season_dirs():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
             df_log = pd.read_csv(file_path)
