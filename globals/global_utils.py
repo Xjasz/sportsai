@@ -345,6 +345,8 @@ def get_game_details(game_id):
     df_inactive['NICKNAME'] = df_inactive['FIRST_NAME']
     df_inactive['START_POSITION'] = ''
     df_inactive['MIN'] = ''
+    if "NOT_PLAYING_DESCRIPTION" not in df_inactive.columns:
+        df_inactive["NOT_PLAYING_DESCRIPTION"] = ""
     df_inactive["COMMENT"] = df_inactive["NOT_PLAYING_DESCRIPTION"].apply(
         lambda x: "OUT - Inactive Player" if pd.isna(x) or str(x).strip() == "" else f"OUT - {x}"
     )
@@ -359,7 +361,7 @@ def get_game_details(game_id):
     player_statsa = player_statsa.rename(columns={"POSITION": "START_POSITION"})
 
     df_inactive.drop(['NAME_I'], axis=1, inplace=True)
-    df_officials.drop(['NAME_I'], axis=1, inplace=True)
+    df_officials.drop(['NAME_I'], axis=1, inplace=True, errors='ignore')
     return player_statsa, team_statsa, game_summarya, line_scorea, df_inactive, df_officials
 
 def determine_opponent(row):
