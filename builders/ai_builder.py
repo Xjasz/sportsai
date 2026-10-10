@@ -1,15 +1,9 @@
 import os
-import configparser
 
 from globals import global_utils as mu
 import globals.global_settings as gls
 import globals.run_settings as rns
 import pandas as pd
-
-pd.set_option('display.max_colwidth', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
 
 print("Loading.... ai_builder")
 
@@ -28,22 +22,14 @@ def remove_previous_files():
 
 def create_all_details():
     print('create_all_details... Started')
-    df_all_details = pd.DataFrame()
-    for filename in sorted(os.listdir(gls.PLAYER_DETAIL_DIR)):
-        file_path = os.path.join(gls.PLAYER_DETAIL_DIR, filename)
-        df_detail = pd.read_csv(file_path)
-        if not df_detail.empty:
-            df_all_details = pd.concat([df_all_details, df_detail])
-    df_all_details.sort_values(by=['SEASON', 'TEAM'], ascending=True, inplace=True)
-    df_all_details = df_all_details.drop_duplicates(subset=['PLAYER_ID', 'TEAM_ID', 'SEASON'], keep='last')
-    df_all_details.to_csv(gls.ALL_DETAILS, index=False)
+    mu.load_player_details().to_csv(gls.ALL_DETAILS, index=False)
     print('create_all_details... Finished')
 
 def create_all_logs():
     print('create_all_logs started...')
     df_all_logs = pd.DataFrame()
     season_files = sorted(os.listdir(gls.SEASON_DATA_DIR))
-    partial_seasons = {int(f[:4]) for f in season_files if rns.prediction_season not in f}
+    partial_seasons = {int(f[:4]) for f in season_files if f[:4].isdigit() and rns.prediction_season not in f}
     all_partials = pd.read_csv(gls.ALL_PARTIALS) if rns.current_season_only and os.path.exists(gls.ALL_PARTIALS) else None
     if all_partials is not None and set(all_partials['SEASON']) == partial_seasons:
         print('Loading from all partials')
@@ -361,11 +347,7 @@ def build_combined_files():
         all_combined = pd.read_csv(gls.ALL_COMBINED, dtype=mu.get_col_types(gls.ALL_COMBINED))
         mu.print_memory_usage(all_combined, "All Combined")
         print('Cleaned Load removed top_10_preds')
-        config = configparser.ConfigParser()
-        config.read(gls.CFG_FILE)
-        config['DEFAULT']['top_preds'] = str([])
-        with open(gls.CFG_FILE, 'w', encoding='utf-8') as configfile:
-            config.write(configfile)
+        mu.write_to_config('top_preds', [])
 
     print("Final convert starting...")
     if os.path.exists(gls.ALL_FINAL):

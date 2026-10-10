@@ -10,11 +10,6 @@ import globals.run_settings as rns
 from globals import global_utils as mu
 from nba_api.stats.endpoints import playercareerstats, commonplayerinfo, commonallplayers
 
-pd.set_option('display.max_colwidth', None)
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-
 print("Loading.... playerdetail_builder")
 
 #########################################################################################################################################

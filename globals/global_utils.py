@@ -15,6 +15,11 @@ from nba_api.stats.endpoints import boxscoretraditionalv3, boxscoresummaryv2, le
 from nba_api.live.nba.endpoints import boxscore as live_boxscore
 import globals.global_settings as gls
 
+pd.set_option('display.max_colwidth', None)
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+
 print("Loading.... global_utils")
 
 def american_odds_to_decimal(odds):
@@ -179,6 +184,15 @@ def print_memory_usage(df, df_name):
     memory = df.memory_usage(deep=True).sum()
     print(f"Memory usage of {df_name}: {memory} bytes")
 
+def load_player_details():
+    df_all_details = pd.DataFrame()
+    for filename in sorted(os.listdir(gls.PLAYER_DETAIL_DIR)):
+        df_detail = pd.read_csv(os.path.join(gls.PLAYER_DETAIL_DIR, filename))
+        if not df_detail.empty:
+            df_all_details = pd.concat([df_all_details, df_detail])
+    df_all_details.sort_values(by=['SEASON', 'TEAM'], ascending=True, inplace=True)
+    return df_all_details.drop_duplicates(subset=['PLAYER_ID', 'TEAM_ID', 'SEASON'], keep='last')
+
 def split_clean_name(name):
     cleaned_parts = list(dict.fromkeys(part.strip() for part in name.split(' / ') if part.strip()))
     return cleaned_parts
@@ -340,8 +354,7 @@ def get_game_details(game_id):
     df_players = camel_to_upper_snake(df_players)
     df_inactive = df_players[df_players["STATUS"] == "INACTIVE"].reset_index(drop=True)
     df_inactive['GAME_ID'] = game_id
-    df_inactive = df_inactive.rename(columns={"NAME": "PLAYER_NAME"})
-    df_inactive = df_inactive.rename(columns={"PERSON_ID": "PLAYER_ID"})
+    df_inactive = df_inactive.rename(columns={"NAME": "PLAYER_NAME", "PERSON_ID": "PLAYER_ID"})
     df_inactive['NICKNAME'] = df_inactive['FIRST_NAME']
     df_inactive['START_POSITION'] = ''
     df_inactive['MIN'] = ''
@@ -352,12 +365,7 @@ def get_game_details(game_id):
     )
     df_inactive = df_inactive.merge(player_statsa[["TEAM_ID", "TEAM_CITY", "TEAM_ABBREVIATION"]].drop_duplicates(), on="TEAM_ID", how="left")
 
-    player_statsa.drop(['NAME_I'], axis=1, inplace=True)
-    player_statsa.drop(['TEAM_NAME'], axis=1, inplace=True)
-    player_statsa.drop(['TEAM_SLUG'], axis=1, inplace=True)
-    player_statsa.drop(['FAMILY_NAME'], axis=1, inplace=True)
-    player_statsa.drop(['PLAYER_SLUG'], axis=1, inplace=True)
-    player_statsa.drop(['JERSEY_NUM'], axis=1, inplace=True)
+    player_statsa.drop(['NAME_I', 'TEAM_NAME', 'TEAM_SLUG', 'FAMILY_NAME', 'PLAYER_SLUG', 'JERSEY_NUM'], axis=1, inplace=True)
     player_statsa = player_statsa.rename(columns={"POSITION": "START_POSITION"})
 
     df_inactive.drop(['NAME_I'], axis=1, inplace=True)

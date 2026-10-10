@@ -19,7 +19,7 @@ SCRATCH_DIR = os.path.join(SCRIPT_DIR, '.scratch')
 
 def require_main_guard(path):
     if "if __name__ == '__main__':" not in pathlib.Path(path).read_text(encoding='utf-8'):
-        raise SystemExit(f'{path} has no __main__ guard; merge feature/data-pipeline and feature/ai-output first')
+        raise SystemExit(f'{path} has no __main__ guard')
 logger = logging.getLogger('smoke_test')
 
 
