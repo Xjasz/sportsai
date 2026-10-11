@@ -20,11 +20,10 @@ est_timezone = pytz.timezone('US/Eastern')
 
 def scrape_game_officials():
     browser_driver = browser.build_driver()
-    url = "https://www.rotowire.com/basketball/nba-lineups.php"
-    browser_driver.get(url)
-    wait = WebDriverWait(browser_driver, 10)
     games_data = []
     try:
+        browser_driver.get(gls.ROTOWIRE_LINEUPS_URL)
+        wait = WebDriverWait(browser_driver, 10)
         wait.until(EC.presence_of_element_located((By.CLASS_NAME, "lineups")))
         games = browser_driver.find_elements(By.CSS_SELECTOR, 'div[class*="lineup is-nba"]')
         for game in games:
@@ -54,8 +53,8 @@ def scrape_game_officials():
         print(f"Error scraping lineups: {e}")
     finally:
         browser_driver.quit()
-    game_officials = pd.DataFrame(games_data)
-    game_officials[['REF1', 'REF2']] = game_officials['REFEREES'].str.split(',', n=2, expand=True)[[0, 1]]
+    game_officials = pd.DataFrame(games_data, columns=['GAME', 'REFEREES'])
+    game_officials[['REF1', 'REF2']] = game_officials['REFEREES'].str.split(',', n=2, expand=True).reindex(columns=[0, 1])
     unique_officials = pd.read_csv(gls.UNIQUE_OFFICIALS)
     print("Loaded unique_officials...")
     for ref_col in ['REF1', 'REF2']:
@@ -78,7 +77,7 @@ def find_todays_nba_lineups():
     browser_driver = browser.build_driver()
     lineups_data = []
     with browser_driver as driver:
-        lookup_url = 'https://www.nba.com/players/todays-lineups'
+        lookup_url = gls.NBA_LINEUPS_URL
         print(f'url: {lookup_url}')
         driver.get(lookup_url)
         wait = WebDriverWait(driver, 3)
@@ -125,7 +124,7 @@ def find_sportsbook_games():
     browser_driver = browser.build_driver()
     extracted_data = []
     with browser_driver as driver:
-        lookup_url = f'{gls.SPORTSBOOK_API_URL}content-managed-page?currencyCode=USD&exchangeLocale=en_US&includePrices=true&language=en&regionCode=NAMERICA&timezone=America%2FNew_York&_ak=FhMFpcPWXMeyZxOx&page=CUSTOM&customPageId=nba'
+        lookup_url = f'{gls.SPORTSBOOK_API_URL}content-managed-page?currencyCode=USD&exchangeLocale=en_US&includePrices=true&language=en&regionCode=NAMERICA&timezone=America%2FNew_York&_ak={gls.SPORTSBOOK_API_KEY}&page=CUSTOM&customPageId=nba'
         print(f'url: {lookup_url}')
         driver.get(lookup_url)
         wait = WebDriverWait(driver, 5)
@@ -168,9 +167,9 @@ def find_sportsbook_games():
                         })
 
         except json.JSONDecodeError as e:
-            print(f"Error decoding JSON from page source for event ID {event_info['eventId']}: {e}")
+            print(f"Error decoding JSON from sportsbook page source: {e}")
         except Exception as e:
-            print(f"An error occurred for event ID {event_info['eventId']}: {e}")
+            print(f"An error occurred while reading sportsbook events: {e}")
     if len(extracted_data) > 0:
         print('Got sportsbook data...')
     else:

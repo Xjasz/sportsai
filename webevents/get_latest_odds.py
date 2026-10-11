@@ -51,7 +51,7 @@ def fetch_and_process_event_data_with_selenium(ex_data):
             if open_date < current_time:
                 print(f'Skipping event ID {event_id} with name {event_name} startDate: {open_date}  ----   GAME IS LIVE')
                 continue
-            url = f"{gls.SPORTSBOOK_API_URL}event-page?_ak=FhMFpcPWXMeyZxOx&eventId={event_id}&tab=player-points&useCombinedTouchdownsVirtualMarket=true"
+            url = f"{gls.SPORTSBOOK_API_URL}event-page?_ak={gls.SPORTSBOOK_API_KEY}&eventId={event_id}&tab=player-points&useCombinedTouchdownsVirtualMarket=true"
             print(f'Checking event ID {event_id} with name {event_name} url: {url}')
             driver.get(url)
             wait = WebDriverWait(driver, 3)

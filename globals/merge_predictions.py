@@ -11,20 +11,21 @@ def merge_predictions(merge_pred_file, pred_type):
     merged_df['CORRECT'] = 0
     print(f'Loaded: {merge_pred_file}')
     merged_correct_sum = merged_df.groupby('PLAYER_ID')['CORRECT'].sum().to_dict()
-    sorted_directory = sorted([d for d in os.listdir(gls.TOP_OUTPUT_DIR) if pred_type in d.upper()], reverse=True)
+    sorted_directory = sorted([d for d in os.listdir(gls.TOP_OUTPUT_DIR) if pred_type in d.upper() and os.path.isdir(f'{gls.TOP_OUTPUT_DIR}{d}')], reverse=True)
     print(f'Checking {len(sorted_directory)} files for Prediction Type:{pred_type}')
+    merged_rows = {}
     for item in sorted_directory:
         check_dir_file = f'{gls.TOP_OUTPUT_DIR}{item}/season_file.csv'
         print(f'Importing players from file:{check_dir_file}')
         current_df = pd.read_csv(check_dir_file)
-        current_correct_sum = current_df.groupby('PLAYER_ID').apply(lambda x: (x['CORRECT'].sum(), x['PLAYER_NAME'].iloc[0]))
-        for player_id, (correct_sum, player_name) in current_correct_sum.items():
+        for player_id, player_rows in current_df.groupby('PLAYER_ID'):
+            correct_sum = player_rows['CORRECT'].sum()
             if player_id not in merged_correct_sum or correct_sum > merged_correct_sum[player_id]:
-                print(f'Merging better prediction for {player_name} (ID:{player_id}) with {correct_sum} correct predictions from file:{check_dir_file}')
+                print(f'Merging better prediction for {player_rows["PLAYER_NAME"].iloc[0]} (ID:{player_id}) with {correct_sum} correct predictions from file:{check_dir_file}')
                 merged_correct_sum[player_id] = correct_sum
-                merged_df = merged_df[merged_df['PLAYER_ID'] != player_id]
-                player_rows = current_df[current_df['PLAYER_ID'] == player_id]
-                merged_df = pd.concat([merged_df, player_rows], ignore_index=True)
+                merged_rows.pop(player_id, None)
+                merged_rows[player_id] = player_rows
+    merged_df = pd.concat([merged_df, *merged_rows.values()], ignore_index=True)
     merged_df = merged_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
     merged_df.to_csv(merge_pred_file, index=False)
     merged_season_file = f'{gls.MERGED_PATH}{pred_type}/season_file.csv'

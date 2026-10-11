@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import time
 import globals.global_settings as gls
-from globals import global_utils as mu
 from webevents import browser
 
 print("Loading.... get_latest_injurys")
@@ -24,8 +23,7 @@ def find_injury_news():
             team_name = table.find('span', class_='injuries__teamName').text
             rows = table.find_all('tr', class_='Table__TR--sm')
             for row in rows:
-                player_name = row.find('td', class_='col-name').text.strip().replace('.', '')
-                player_name = mu.remove_other_suffixs(player_name)
+                player_name = row.find('td', class_='col-name').text.strip()
                 pos = row.find('td', class_='col-pos').text.strip()
                 est_return_date = row.find('td', class_='col-date').text.strip()
                 status = row.find('td', class_='col-stat').text.strip()

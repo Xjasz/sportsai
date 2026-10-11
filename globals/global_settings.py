@@ -30,6 +30,7 @@ POSITION_TOSIZE_MAPPER = {'Guard': {'avg_height': "6-3", 'avg_weight': 185},'For
 BLOAT_TODTYPE_MAPPER = {'EVENT_TYPE': str, 'PLAYER_ID': str}
 
 #GLOBAL ARRAYS
+OUT_KEYWORDS_SET = {'INJ', 'NOT WITH TEAM', 'MWT', 'DNT', 'DID NOT TRAVEL', 'NWT', 'SUSPENSION', 'PERSONAL', 'INACTIVE', 'DND', 'DID NOT DRESS', 'DNP_TRADE'}
 BLOAT_KEYWORDS = ['fired', 'hired', 'owner', 'promote', r'coach \(date approximate\)', 're-signed as', 'resign', 'reassign', 're-assigned','administrative leave', 'leave of abs', 'retired as', 'replaced as', 'coach fined', 'head coach suf', 'suspended as','re-sign as head', 'coach had surgery', 'replaced as', 'fined as', 'on head coach', 'director of player programs', 'demoted', 'coach missed','coach underwent', 'coach diagnosed', 'returned as', 'as head coach', 'retained as', 'as head of', 'assistant', 'manager', 'scout', 'president']
 BLOAT_ALTKEYWORDS = [r',,,trade|,,,3-team|,,,4-team|,,,sent|,,,received|,,,team|,,,activated|,,,placed|,,,2018|,,,assigned|,,,col|,CHI,,,|,CLE,,,']
 BLOAT_ALTKEYWORDS2 = [r',,']
@@ -148,6 +149,9 @@ best_model_file = f'{PROJECT_DIR}/data/ai/states/best/best_model.h5'
 #URLS
 SPORTSBOOK_API_URL = 'https://sbapi.in.sportsbook.fanduel.com/api/'
 ESPN_NBA_INJURY_URL = 'https://www.espn.com/nba/injuries'
+ROTOWIRE_LINEUPS_URL = 'https://www.rotowire.com/basketball/nba-lineups.php'
+NBA_LINEUPS_URL = 'https://www.nba.com/players/todays-lineups'
+SPORTSBOOK_API_KEY = 'FhMFpcPWXMeyZxOx'
 
 #SQL TABLES
 SPORTSBOOK_ODDS_TABLE = 'sportsbook_odds'

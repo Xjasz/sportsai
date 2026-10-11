@@ -119,8 +119,8 @@ def stage_api(args):
         warn('No game ids returned for date, skipping remaining api checks')
         return
     raw_id = ids[0]
-    norm_id = raw_id[2:] if raw_id.startswith('00') else raw_id
-    full_id = f'00{norm_id}'
+    norm_id = raw_id[2:] if raw_id.startswith(gls.NBAAPI_GAMEID_INIT) else raw_id
+    full_id = f'{gls.NBAAPI_GAMEID_INIT}{norm_id}'
     frames, dt = timed(mu.get_game_details, full_id)
     info(f'get_game_details({full_id}) took {dt:.2f}s')
     names = ['player_stats', 'team_stats', 'game_summary', 'line_score', 'inactive_players', 'officials']
@@ -139,12 +139,12 @@ def stage_api(args):
             info(f'team {team_id} WINS={match.iloc[0]["WINS"]} LOSSES={match.iloc[0]["LOSSES"]}')
         else:
             warn(f'team {team_id} not found in season_data for game {game_id_str}')
-    all_players, dt = timed(lambda: commonallplayers.CommonAllPlayers(is_only_current_season='1', league_id='00').get_data_frames()[0])
+    all_players, dt = timed(lambda: commonallplayers.CommonAllPlayers(is_only_current_season='1', league_id=gls.NBAAPI_LEAGUE_ID).get_data_frames()[0])
     info(f'commonallplayers took {dt:.2f}s -> rows={len(all_players)}')
     first_player_id = player_stats['PLAYER_ID'].iloc[0]
-    info_df, dt = timed(lambda: commonplayerinfo.CommonPlayerInfo(player_id=first_player_id, league_id_nullable='00').get_data_frames()[0])
+    info_df, dt = timed(lambda: commonplayerinfo.CommonPlayerInfo(player_id=first_player_id, league_id_nullable=gls.NBAAPI_LEAGUE_ID).get_data_frames()[0])
     info(f'commonplayerinfo({first_player_id}) took {dt:.2f}s -> shape={info_df.shape}')
-    career_df, dt = timed(lambda: playercareerstats.PlayerCareerStats(player_id=first_player_id, league_id_nullable='00').get_data_frames()[0])
+    career_df, dt = timed(lambda: playercareerstats.PlayerCareerStats(player_id=first_player_id, league_id_nullable=gls.NBAAPI_LEAGUE_ID).get_data_frames()[0])
     info(f'playercareerstats({first_player_id}) took {dt:.2f}s -> shape={career_df.shape}')
 
 
@@ -340,7 +340,8 @@ def main():
     if not date_str:
         seasons = list_seasons(gls.GAMES_DATA_DIR)
         files = list_csv(os.path.join(gls.GAMES_DATA_DIR, seasons[-1])) if seasons else []
-        date_str = files[-1][:10] if files else '2025-01-27'
+        dates = sorted({f[:10] for f in files if f[:10] < datetime.date.today().isoformat()})
+        date_str = dates[-1] if dates else '2025-01-27'
     args.run_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
     info(f'Stages: {selected}')
     info(f'Date: {args.run_date} Games: {args.games} Files: {args.files}')

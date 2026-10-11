@@ -25,8 +25,8 @@ CREATE_ALL = False
 
 def create_game_data(game_id, seasondf, alt_directory=None, will_save=True):
     print(f'Creating GameID:{game_id}')
-    game_id = game_id[2:] if game_id.startswith('00') else game_id
-    player_stats, team_stats, game_summary, line_scorea, df_inactive, df_officials  = mu.get_game_details(f'00{game_id}')
+    game_id = game_id[2:] if game_id.startswith(gls.NBAAPI_GAMEID_INIT) else game_id
+    player_stats, team_stats, game_summary, line_scorea, df_inactive, df_officials  = mu.get_game_details(f'{gls.NBAAPI_GAMEID_INIT}{game_id}')
     if PRINT_ALL_INFO:
         print_game_info(player_stats,team_stats,game_summary,df_inactive,df_officials)
     for col in player_stats.columns:
@@ -34,8 +34,6 @@ def create_game_data(game_id, seasondf, alt_directory=None, will_save=True):
             df_inactive[col] = np.nan
     inactive_players = df_inactive[player_stats.columns]
     combined_df = pd.concat([player_stats, inactive_players], ignore_index=True, sort=False)
-    columns_to_nan = ['FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA', 'FT_PCT', 'OREB', 'DREB', 'REB','AST', 'STL', 'BLK', 'TO', 'PF', 'PTS', 'PLUS_MINUS']
-    combined_df[columns_to_nan] = combined_df[columns_to_nan].apply(lambda x: x.fillna(np.nan))
     combined_df['MIN'] = combined_df['MIN'].astype(str).str.split(':', expand=True)[0]
     season = game_summary['SEASON'].iloc[0]
     combined_df['SEASON'] = season
@@ -75,7 +73,7 @@ def create_game_data(game_id, seasondf, alt_directory=None, will_save=True):
     combined_df['sort_key'] = combined_df.iloc[:, -4:].isnull().any(axis=1) | (combined_df.iloc[:, -4:] == '').any(axis=1)
     combined_df = combined_df.sort_values(by=['sort_key','TEAM_ID']).drop('sort_key', axis=1)
     game_id_to_home_team_id = game_summary.set_index('GAME_ID')['HOME_TEAM_ID'].to_dict()
-    combined_df['IS_HOME'] = combined_df.apply(lambda row: 1 if game_id_to_home_team_id.get('00'+row['GAME_ID']) == row['TEAM_ID'] else 0, axis=1)
+    combined_df['IS_HOME'] = combined_df.apply(lambda row: 1 if game_id_to_home_team_id.get(gls.NBAAPI_GAMEID_INIT + row['GAME_ID']) == row['TEAM_ID'] else 0, axis=1)
     ishome_col = combined_df.pop('IS_HOME')
     combined_df.insert(9, 'IS_HOME', ishome_col)
     combined_df = combined_df.rename(columns={'TEAM_ABBREVIATION': 'TEAM_NAME'})
@@ -139,7 +137,7 @@ def create_all_games():
 
 def fetch_game_ids(date):
     date_str = date.strftime('%m/%d/%Y')
-    games_df = leaguegamefinder.LeagueGameFinder(season_type_nullable='Regular Season', date_from_nullable=date_str, date_to_nullable=date_str, league_id_nullable='00').get_data_frames()[0]
+    games_df = leaguegamefinder.LeagueGameFinder(season_type_nullable='Regular Season', date_from_nullable=date_str, date_to_nullable=date_str, league_id_nullable=gls.NBAAPI_LEAGUE_ID).get_data_frames()[0]
     print(f'games_df =  {games_df}')
     games_df = games_df[~games_df['SEASON_ID'].astype(str).str.contains('320')]
     game_ids = games_df['GAME_ID'].unique()
