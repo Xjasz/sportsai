@@ -106,16 +106,14 @@ def apply_odds_values():
         result_df = result_df.sort_values(by=['PLAYER_NAME', 'GAME_DATE', 'BET_TYPE'])
         result_df.to_csv(odds_file, index=False)
     result_df = pd.read_csv(odds_file) if os.path.exists(odds_file) else pd.DataFrame(columns=['GAME_DATE', 'PLAYER_NAME', 'BET_TYPE', 'OverValue', 'OverOdds', 'DateChecked'])
-    grouped = result_df.groupby(['GAME_DATE', 'PLAYER_NAME', 'BET_TYPE']) if not result_df.empty else None
-    if grouped:
-        agg_df = grouped.agg(
+    if not result_df.empty and 'OverValue' in result_df.columns:
+        agg_df = result_df.groupby(['GAME_DATE', 'PLAYER_NAME', 'BET_TYPE']).agg(
             VAL_RANGE=('OverValue', lambda x: '|'.join(x.astype(str))),
             ODDS_RANGE=('OverOdds', lambda x: '|'.join(x.astype(str))),
             CHANGE_RANGE=('DateChecked', lambda x: '|'.join(x.astype(str)))
         ).reset_index()
         result_df = pd.merge(result_df, agg_df, on=['GAME_DATE', 'PLAYER_NAME', 'BET_TYPE'], how='left')
-        result_df = result_df.rename(columns={'OverValue': 'BET_VAL', 'OverOdds': 'BET_ODDS', 'BET_TYPE_x': 'BET_TYPE', 'DateChecked': 'LAST_CHECK', 'EventName': 'EVENT_NAME'})
-        result_df['VAL_RANGE'] = result_df['VAL_RANGE'].astype(str).str.replace("'", "", regex=False)
+        result_df = result_df.rename(columns={'OverValue': 'BET_VAL', 'OverOdds': 'BET_ODDS', 'DateChecked': 'LAST_CHECK', 'EventName': 'EVENT_NAME'})
         result_df.to_csv(odds_file, index=False)
     odds_df = pd.read_csv(odds_file) if os.path.exists(odds_file) else pd.DataFrame(columns=['GAME_DATE', 'PLAYER_NAME', 'BET_TYPE', 'BET_VAL', 'BET_ODDS', 'VAL_RANGE'])
     odds_unique = None
@@ -148,7 +146,6 @@ def apply_odds_values():
             check_df['GAME_DATE'] = pd.to_datetime(check_df['GAME_DATE']).dt.date
             total_ondate_target = check_df.loc[check_df['GAME_DATE'].astype(str) == rns.prediction_date, TARGET_NAME].sum()
             check_df = check_df.merge(df_filtered[['PLAYER_NAME', 'GAME_DATE', 'BET_VAL', 'BET_ODDS', 'VAL_RANGE', 'ODDS_RANGE']],how='left', on=['PLAYER_NAME', 'GAME_DATE'])
-            check_df.reset_index(drop=True, inplace=True)
             check_df = check_df.drop(['CORRECT', 'UNDER', 'OVER', 'AVG_OVER', 'AVG_UNDER'], axis=1)
             check_df = check_df.rename(columns={f'{TARGET_NAME}_PRED': 'PRED', 'DIFF_ACT': f'DIFF_{TARGET_NAME}'})
             check_df['BET_VAL'] = check_df['BET_VAL'].fillna(0)
@@ -167,7 +164,7 @@ def apply_odds_values():
             cols_except_f1_f2 = [col for col in check_df.columns if col not in ['DIFF_AVG', f'DIFF_{TARGET_NAME}', 'DIFF_ODDS', 'VAL_RANGE', 'ODDS_RANGE']]
             new_column_order = cols_except_f1_f2 + ['DIFF_AVG', f'DIFF_{TARGET_NAME}', 'DIFF_ODDS', 'VAL_RANGE', 'ODDS_RANGE']
             check_df = check_df[new_column_order]
-            check_df['VAL_RANGE'] = check_df['VAL_RANGE'].astype(str).str.replace("'", "", regex=False)
+            check_df['VAL_RANGE'] = check_df['VAL_RANGE'].astype(str)
             percentage_diff = abs(check_df[TARGET_NAME] - check_df['PRED']) / (check_df[TARGET_NAME] + 0.0001)
             absolute_diff = np.abs(check_df[TARGET_NAME] - check_df['PRED'])
             check_df['CORRECT_PRED'] = np.where((percentage_diff <= 0.1) | ((check_df[TARGET_NAME] < 10) & (absolute_diff < 1)),1,0)
@@ -181,7 +178,6 @@ def apply_odds_values():
             check_df[f'UNDER-10_{TARGET_NAME}'] = (check_df['PRED'] < 0.9 * check_df[TARGET_NAME]).astype(int)
             check_df['OVER-10_AVG'] = (check_df['PRED'] > 1.1 * check_df[f'AVG_{TARGET_NAME}']).astype(int)
             check_df['UNDER-10_AVG'] = (check_df['PRED'] < 0.9 * check_df[f'AVG_{TARGET_NAME}']).astype(int)
-            check_df.reset_index(drop=True, inplace=True)
             folderpath = f'{gls.TOP_OUTPUT_DIR}{item}/'
             check_dir_file3 = f'{folderpath}season_file3.csv'
             check_df = check_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
@@ -199,28 +195,21 @@ def apply_odds_values():
             df_sorted = check_df.sort_values(by=['PLAYER_ID', 'GAME_DATE'])
             check_df['PROB_5'] = 0.0
             check_df['PROB_10'] = 0.0
-            check_df['PROB_5'] = check_df['PROB_5'].astype(float)
-            check_df['PROB_10'] = check_df['PROB_10'].astype(float)
             for player_id, group in df_sorted.groupby('PLAYER_ID'):
                 prob_5, prob_10 = calculate_probabilities(group, TARGET_NAME)
                 if prob_5 is not None and prob_10 is not None:
                     last_index = group.index[-1]
                     check_df.at[last_index, 'PROB_5'] = prob_5
                     check_df.at[last_index, 'PROB_10'] = prob_10
-            check_df = check_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
 
             print('Apply Edge')
             check_df['BET_ODDS'] = pd.to_numeric(check_df['BET_ODDS'], errors='coerce')
-            check_df['EDGE'] = 0.0
-            check_df['EDGE'] = check_df['EDGE'].astype(float)
             check_df['EDGE'] = check_df.apply(calculate_edge, axis=1)
-            check_df = check_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
 
             print("moving officials to end...")
             official_columns = [col for col in check_df.columns if col.startswith("OFFICIAL1_") or col.startswith("OFFICIAL2_")]
             other_columns = [col for col in check_df.columns if col not in official_columns]
             check_df = check_df[other_columns + official_columns]
-            check_df = check_df.sort_values(by=['GAME_DATE', 'GAME_ID'])
             check_df.to_csv(check_dir_file3, index=False)
             print(f'Saved check_dir_file3 -> {check_dir_file3}')
 
@@ -251,8 +240,9 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
 
     light_yellow_fill = PatternFill(start_color="FFFF99", end_color="FFFF99", fill_type="solid")
     light_peach_fill = PatternFill(start_color="FFDAB9", end_color="FFDAB9", fill_type="solid")
-    yellow_columns = ['BO', 'BR', 'BU', 'BX', 'CA', 'CD']
-    peach_columns = ['CG', 'CJ', 'CM', 'CP', 'CS', 'CV']
+    official_columns = [get_column_letter(excel_df.columns.get_loc(f'OFFICIAL{n}_{lag}_{TARGET_NAME}') + 1)
+                        for n in (1, 2) for lag in ('LAST', '2NDLAST', '3RDLAST', '4THLAST', '5THLAST', '6THLAST')]
+    yellow_columns, peach_columns = official_columns[:6], official_columns[6:]
 
     print('Setting Ref Columns...')
     for col in yellow_columns:
@@ -313,7 +303,9 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
         worksheet[cell_reference].alignment = header_alignment
 
     print('Adding Ref Formulas...')
-    add_multiple_formulas(worksheet, max_rows)
+    avg_column = get_column_letter(excel_df.columns.get_loc(f'AVG_{TARGET_NAME}') + 1)
+    target_column = get_column_letter(excel_df.columns.get_loc(TARGET_NAME) + 1)
+    add_multiple_formulas(worksheet, max_rows, avg_column, target_column, official_columns)
 
     print('Setup Sheet Headers...')
     columns_width = {'PLAYER_ID': .1, 'SEASON': .1,'GAME_ID': 2,'GAME_DATE': 10,'PLAYER_NAME': 13,'TEAM_NAME': 5,
@@ -358,18 +350,16 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
 
     print('SetColor: (CORRECT_PRED)...')
     lime_green_fill = PatternFill(start_color='00FF00', fill_type='solid')
-    for row in worksheet.iter_rows(min_row=2, max_col=len(excel_df.columns), max_row=len(excel_df) + 1):
-        if row[excel_df.columns.get_loc('CORRECT_PRED')].value == 1:
-            for cell in row:
-                cell.fill = lime_green_fill
+    for pos in np.flatnonzero(excel_df['CORRECT_PRED'].to_numpy() == 1):
+        for cell in next(worksheet.iter_rows(min_row=pos + 2, max_row=pos + 2, max_col=len(excel_df.columns))):
+            cell.fill = lime_green_fill
 
     print(f'SetColor: (AVG_{TARGET_NAME},{TARGET_NAME},PRED,BET_VAL)...')
     yellow_fill = PatternFill(start_color='FFFF00', fill_type='solid')
-    for row in worksheet.iter_rows(max_col=len(excel_df.columns), max_row=max_row):
-        for idx, cell in enumerate(row):
-            column_name = excel_df.columns[idx]
-            if column_name in [f'AVG_{TARGET_NAME}', TARGET_NAME, 'PRED', 'BET_VAL']:
-                cell.fill = yellow_fill
+    for column_name in [f'AVG_{TARGET_NAME}', TARGET_NAME, 'PRED', 'BET_VAL']:
+        col_idx = excel_df.columns.get_loc(column_name) + 1
+        for (cell,) in worksheet.iter_rows(min_col=col_idx, max_col=col_idx, max_row=max_row):
+            cell.fill = yellow_fill
 
     print(f'SetColor: (LAST_{TARGET_NAME},PREV_{TARGET_NAME})...')
     multiply_amt = 1.5 if TARGET_NAME == 'PTS' else 2.0
@@ -473,25 +463,26 @@ def generate_excelfile(excel_df, foldername, TARGET_NAME):
 
 def set_cell_color(excel_df, worksheet, set_args):
     col_indices = [excel_df.columns.get_loc(name) + 1 for name in set_args[1]]
-    max_col_idx = max(col_indices)
-    for row in worksheet.iter_rows(min_row=2, max_col=max_col_idx, max_row=len(excel_df) + 1):
+    min_col_idx = min(col_indices)
+    for row in worksheet.iter_rows(min_row=2, min_col=min_col_idx, max_col=max(col_indices), max_row=len(excel_df) + 1):
         for col_idx in col_indices:
+            cell = row[col_idx - min_col_idx]
             if set_args[0] == 'EQUAL_CHAR':
-                if row[col_idx - 1].value in set_args[2]:
-                    row[col_idx - 1].fill = set_args[3][0]
+                if cell.value in set_args[2]:
+                    cell.fill = set_args[3][0]
             else:
                 for idx, value_name in enumerate(set_args[2]):
-                    if set_args[0] == 'EQUAL' and row[col_idx - 1].value == value_name:
-                        row[col_idx - 1].fill = set_args[3][idx]
-                    elif set_args[0] == 'LESSTHAN' and row[col_idx - 1].value < value_name:
-                        row[col_idx - 1].fill = set_args[3][idx]
-                    elif set_args[0] == 'GREATERTHAN' and row[col_idx - 1].value > value_name:
-                        row[col_idx - 1].fill = set_args[3][idx]
+                    if set_args[0] == 'EQUAL' and cell.value == value_name:
+                        cell.fill = set_args[3][idx]
+                    elif set_args[0] == 'LESSTHAN' and cell.value < value_name:
+                        cell.fill = set_args[3][idx]
+                    elif set_args[0] == 'GREATERTHAN' and cell.value > value_name:
+                        cell.fill = set_args[3][idx]
     return worksheet
 
 def fetch_game_ids(date):
     date_str = date.strftime('%m/%d/%Y')
-    gamefinder = leaguegamefinder.LeagueGameFinder(date_from_nullable=date_str, date_to_nullable=date_str, league_id_nullable='00')
+    gamefinder = leaguegamefinder.LeagueGameFinder(date_from_nullable=date_str, date_to_nullable=date_str, league_id_nullable=gls.NBAAPI_LEAGUE_ID)
     games_df = gamefinder.get_data_frames()[0]
     print(f'games_df =  {games_df}')
     games_df = games_df[~games_df['SEASON_ID'].astype(str).str.contains('320')]
@@ -512,84 +503,24 @@ def find_recent_games():
         print("Loaded all games")
     return dataframesarray
 
-def add_multiple_formulas(worksheet, max_rows):
+def add_multiple_formulas(worksheet, max_rows, avg_col, target_col, official_cols):
+    def trio(op, a, b, c, row):
+        test = ', '.join(f'{avg_col}{row}{op}{x}{row}' for x in (a, b, c))
+        bad = f'OR({a}{row}=-1, {b}{row}=-1, {c}{row}=-1)'
+        return f'IF(AND({test}, {avg_col}{row}>$EF$2), IF({bad}, 0, 1), IF({bad}, 0, IF({avg_col}{row}<$EF$2, 0, -1)))'
+    def single(op, a, row):
+        return f'IF({avg_col}{row}{op}{a}{row}, IF({a}{row}=-1, 0, IF({avg_col}{row}<$EF$2, 0, 1)), IF({a}{row}=-1, 0, IF({avg_col}{row}<$EF$2, 0, -1)))'
+    trios = [official_cols[i:i + 3] for i in range(0, 12, 3)]
+    k, m = avg_col, target_col
     for row in range(2, max_rows):
-        worksheet[f'CY{row}'] = (
-            f'=IF(AND(K{row}/$ED$2>BO{row}, K{row}/$ED$2>BR{row}, K{row}/$ED$2>BU{row}, K{row}>$EF$2), '
-            f'IF(OR(BO{row}=-1, BR{row}=-1, BU{row}=-1), 0, 1), '
-            f'IF(OR(BO{row}=-1, BR{row}=-1, BU{row}=-1), 0, IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(AND(K{row}/$ED$2>BX{row}, K{row}/$ED$2>CA{row}, K{row}/$ED$2>CD{row}, K{row}>$EF$2), '
-            f'IF(OR(BX{row}=-1, CA{row}=-1, CD{row}=-1), 0, 1), '
-            f'IF(OR(BX{row}=-1, CA{row}=-1, CD{row}=-1), 0, IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(AND(K{row}/$ED$2>CG{row}, K{row}/$ED$2>CJ{row}, K{row}/$ED$2>CM{row}, K{row}>$EF$2), '
-            f'IF(OR(CG{row}=-1, CJ{row}=-1, CM{row}=-1), 0, 1), '
-            f'IF(OR(CG{row}=-1, CJ{row}=-1, CM{row}=-1), 0, IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(AND(K{row}/$ED$2>CP{row}, K{row}/$ED$2>CS{row}, K{row}/$ED$2>CV{row}, K{row}>$EF$2), '
-            f'IF(OR(CP{row}=-1, CS{row}=-1, CV{row}=-1), 0, 1), '
-            f'IF(OR(CP{row}=-1, CS{row}=-1, CV{row}=-1), 0, IF(K{row}<$EF$2, 0, -1)))'
-        )
-        worksheet[f'CZ{row}'] = (
-            f'=IF(AND(K{row}*$EE$2<BO{row}, K{row}*$EE$2<BR{row}, K{row}*$EE$2<BU{row}, K{row}>$EF$2), '
-            f'IF(OR(BO{row}=-1, BR{row}=-1, BU{row}=-1), 0, 1), '
-            f'IF(OR(BO{row}=-1, BR{row}=-1, BU{row}=-1), 0, IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(AND(K{row}*$EE$2<BX{row}, K{row}*$EE$2<CA{row}, K{row}*$EE$2<CD{row}, K{row}>$EF$2), '
-            f'IF(OR(BX{row}=-1, CA{row}=-1, CD{row}=-1), 0, 1), '
-            f'IF(OR(BX{row}=-1, CA{row}=-1, CD{row}=-1), 0, IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(AND(K{row}*$EE$2<CG{row}, K{row}*$EE$2<CJ{row}, K{row}*$EE$2<CM{row}, K{row}>$EF$2), '
-            f'IF(OR(CG{row}=-1, CJ{row}=-1, CM{row}=-1), 0, 1), '
-            f'IF(OR(CG{row}=-1, CJ{row}=-1, CM{row}=-1), 0, IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(AND(K{row}*$EE$2<CP{row}, K{row}*$EE$2<CS{row}, K{row}*$EE$2<CV{row}, K{row}>$EF$2), '
-            f'IF(OR(CP{row}=-1, CS{row}=-1, CV{row}=-1), 0, 1), '
-            f'IF(OR(CP{row}=-1, CS{row}=-1, CV{row}=-1), 0, IF(K{row}<$EF$2, 0, -1)))'
-        )
-        worksheet[f'DA{row}'] = (
-            f'=IF(K{row}/$ED$2>BO{row}, IF(BO{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(BO{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>BR{row}, IF(BR{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(BR{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>BU{row}, IF(BU{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(BU{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>BX{row}, IF(BX{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(BX{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>CA{row}, IF(CA{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CA{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>CD{row}, IF(CD{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CD{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>CG{row}, IF(CG{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CG{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>CJ{row}, IF(CJ{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CJ{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>CM{row}, IF(CM{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CM{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}/$ED$2>CP{row}, IF(CP{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CP{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))'
-        )
-        worksheet[f'DB{row}'] = (
-            f'=IF(K{row}*$EE$2<BO{row}, IF(BO{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(BO{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<BR{row}, IF(BR{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(BR{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<BU{row}, IF(BU{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(BU{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<BX{row}, IF(BX{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(BX{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<CA{row}, IF(CA{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CA{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<CD{row}, IF(CD{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CD{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<CG{row}, IF(CG{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CG{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<CJ{row}, IF(CJ{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CJ{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<CM{row}, IF(CM{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CM{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))+'
-            f'IF(K{row}*$EE$2<CP{row}, IF(CP{row}=-1, 0, IF(K{row}<$EF$2, 0, 1)), IF(CP{row}=-1, 0, '
-            f'IF(K{row}<$EF$2, 0, -1)))'
-        )
-        worksheet[f'DC{row}'] = f'=IF(CY{row}>=$EG$2, IF(M{row}>K{row}, -1, IF(M{row}<$EF$2, 0, 1)), 0)'
-        worksheet[f'DD{row}'] = f'=IF(CZ{row}>=$EH$2, IF(M{row}<K{row}, -1, IF(M{row}<$EF$2, 0, 1)), 0)'
-        worksheet[f'DE{row}'] = f'=IF(DA{row}>=$EI$2, IF(M{row}>K{row}, -1, IF(M{row}<$EF$2, 0, 1)), 0)'
-        worksheet[f'DF{row}'] = f'=IF(DB{row}>=$EJ$2, IF(M{row}<K{row}, -1, IF(M{row}<$EF$2, 0, 1)), 0)'
+        worksheet[f'CY{row}'] = '=' + '+'.join(trio('/$ED$2>', a, b, c, row) for a, b, c in trios)
+        worksheet[f'CZ{row}'] = '=' + '+'.join(trio('*$EE$2<', a, b, c, row) for a, b, c in trios)
+        worksheet[f'DA{row}'] = '=' + '+'.join(single('/$ED$2>', a, row) for a in official_cols[:10])
+        worksheet[f'DB{row}'] = '=' + '+'.join(single('*$EE$2<', a, row) for a in official_cols[:10])
+        worksheet[f'DC{row}'] = f'=IF(CY{row}>=$EG$2, IF({m}{row}>{k}{row}, -1, IF({m}{row}<$EF$2, 0, 1)), 0)'
+        worksheet[f'DD{row}'] = f'=IF(CZ{row}>=$EH$2, IF({m}{row}<{k}{row}, -1, IF({m}{row}<$EF$2, 0, 1)), 0)'
+        worksheet[f'DE{row}'] = f'=IF(DA{row}>=$EI$2, IF({m}{row}>{k}{row}, -1, IF({m}{row}<$EF$2, 0, 1)), 0)'
+        worksheet[f'DF{row}'] = f'=IF(DB{row}>=$EJ$2, IF({m}{row}<{k}{row}, -1, IF({m}{row}<$EF$2, 0, 1)), 0)'
 
 if __name__ == '__main__':
     print('Starting...')

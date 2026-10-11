@@ -57,8 +57,9 @@ def process_directory(inj_data, evt_data, spb_data, off_data):
                 print(f"Found away {file_path}")
             if homedf is not None and awaydf is not None:
                 print(f"Previous game mapped for {t1} vs {t2}")
-                condition1 = homedf['COMMENT'].isin(["DNP - Coach's Decision","OUT - Inactive Player"])
-                condition2 = awaydf['COMMENT'].isin(["DNP - Coach's Decision","OUT - Inactive Player"])
+                previous_invalid_comments = ["DNP - Coach's Decision", "OUT - Inactive Player"]
+                condition1 = homedf['COMMENT'].isin(previous_invalid_comments)
+                condition2 = awaydf['COMMENT'].isin(previous_invalid_comments)
                 players_to_update_df1 = homedf.loc[condition1, ['PLAYER_ID', 'COMMENT']]
                 players_to_update_df2 = awaydf.loc[condition2, ['PLAYER_ID', 'COMMENT']]
                 previous_invalids = pd.concat([players_to_update_df1, players_to_update_df2]).drop_duplicates(subset='PLAYER_ID')

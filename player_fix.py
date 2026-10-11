@@ -22,8 +22,8 @@ else:
     print(f"Directory not found: {directory.resolve()}")
     exit()
 
-print(f'Players to fix {totalcount}')
-current_all_players = commonallplayers.CommonAllPlayers(is_only_current_season='1', league_id='00').get_data_frames()[0]
+print(f'Players to fix {len(players)} ({totalcount} rows)')
+current_all_players = commonallplayers.CommonAllPlayers(is_only_current_season='1', league_id=gls.NBAAPI_LEAGUE_ID).get_data_frames()[0]
 
 for player_id, player_name in sorted(players):
     pdb.fetch_and_save_player_detail((player_id, player_name), current_all_players, force_update=True)

@@ -16,13 +16,11 @@ from unidecode import unidecode
 # SET 'run_from_start_to_finish' to 'TRUE' to overwrite season gamelogs.
 # SET 'current_season_only' to 'TRUE' to overwrite current season gamelogs.
 #########################################################################################################################################
-OUT_KEYWORDS_SET = {'INJ', 'NOT WITH TEAM', 'MWT', 'DNT', 'DID NOT TRAVEL', 'NWT', 'SUSPENSION', 'PERSONAL', 'INACTIVE', 'DND', 'DID NOT DRESS', 'DNP_TRADE'}
-
 def comment_keyword(comment):
     if pd.isna(comment) or len(comment) == 0:
         return ''
     keyword = str(comment.split('-')[0].strip()).upper()
-    return 'OUT' if any(status_keyword in keyword for status_keyword in OUT_KEYWORDS_SET) else keyword
+    return 'OUT' if any(status_keyword in keyword for status_keyword in gls.OUT_KEYWORDS_SET) else keyword
 
 def season_dirs(prediction_only=False):
     for item in os.listdir(gls.GAMES_DATA_DIR):
@@ -32,10 +30,12 @@ def season_dirs(prediction_only=False):
         yield item, f'{gls.GAMES_DATA_DIR}{item}/'
 
 def optimized_rolling_averages(df, col, count):
-    return df.groupby(['SEASON', 'PLAYER_ID'])[col].transform(lambda x: x.shift().rolling(window=count, min_periods=1).mean())
+    shifted = df.groupby(['SEASON', 'PLAYER_ID'])[col].shift()
+    return shifted.groupby([df['SEASON'], df['PLAYER_ID']]).rolling(window=count, min_periods=1).mean().reset_index(level=[0, 1], drop=True).sort_index()
 
 def optimized_rolling_avg_season(df, col):
-    return df.groupby(['SEASON', 'PLAYER_ID'])[col].transform(lambda x: x.shift().expanding(min_periods=1).mean())
+    shifted = df.groupby(['SEASON', 'PLAYER_ID'])[col].shift()
+    return shifted.groupby([df['SEASON'], df['PLAYER_ID']]).expanding(min_periods=1).mean().reset_index(level=[0, 1], drop=True).sort_index()
 
 def rolling_by_official_avg_season(df, col, official_col):
     return df.groupby(['SEASON', 'PLAYER_ID', official_col])[col].transform(lambda x: x.shift().expanding(min_periods=1).mean())
@@ -48,9 +48,8 @@ def rolling_by_official(df, col, official_col, count):
 
 def rolling_home_or_away_consecutive(df, col, is_home):
     filtered_df = df[df['IS_HOME'] == is_home]
-    rolling_means = filtered_df.groupby(['SEASON', 'PLAYER_ID'])[col].apply(lambda x: x.shift().rolling(window=3, min_periods=1).mean())
-    rolling_means = rolling_means.reset_index(level=['SEASON', 'PLAYER_ID'], drop=True)
-    return rolling_means
+    shifted = filtered_df.groupby(['SEASON', 'PLAYER_ID'])[col].shift()
+    return shifted.groupby([filtered_df['SEASON'], filtered_df['PLAYER_ID']]).rolling(window=3, min_periods=1).mean().reset_index(level=[0, 1], drop=True)
 
 def process_player_group(df):
     df['change'] = df['IS_OUT'].diff().fillna(0).ne(0).astype(int)
@@ -123,13 +122,12 @@ def optimized_createmainrollingtotals(gl_df, gl_path):
             new_columns['RT9_' + col] = optimized_rolling_averages(gl_df, col, 9).round(2).fillna(0)
         new_columns_df = pd.DataFrame(new_columns, index=gl_df.index)
         gl_df = pd.concat([gl_df, new_columns_df], axis=1)
-        gl_df.sort_values(by='GAME_DATE', ascending=True, inplace=True)
         gl_df.sort_values(by=['SEASON', 'PLAYER_ID', 'GAME_DATE'], ascending=True, inplace=True)
         for col in roll_columns:
             gl_df[f'RT3H_{col}'] = rolling_home_or_away_consecutive(gl_df, col, 1).round(2)
-            gl_df[f'RT3H_{col}'] = gl_df[f'RT3H_{col}'].round(2).fillna(0)
+            gl_df[f'RT3H_{col}'] = gl_df[f'RT3H_{col}'].fillna(0)
             gl_df[f'RT3A_{col}'] = rolling_home_or_away_consecutive(gl_df, col, 0).round(2)
-            gl_df[f'RT3A_{col}'] = gl_df[f'RT3A_{col}'].round(2).fillna(0)
+            gl_df[f'RT3A_{col}'] = gl_df[f'RT3A_{col}'].fillna(0)
         for col in roll_columns:
             gl_df[f'RTZ_{col}'] = gl_df[f'RT3H_{col}'] + gl_df[f'RT3A_{col}']
             gl_df = gl_df.drop([f'RT3H_{col}', f'RT3A_{col}'], axis=1)
@@ -237,6 +235,9 @@ def setup_season_values():
     print('setup_season_values started...')
     for file_name in os.listdir(gls.SEASON_DATA_DIR):
         file_path = os.path.join(gls.SEASON_DATA_DIR, file_name)
+        if glu.file_contains_value(file_path, 'OPP_PLAYER_NAME'):
+            print(f'Skipping {file_path}, already processed...')
+            continue
         df_log = pd.read_csv(file_path)
         print(f'Filtering {file_path} starting...')
         df_log = optimized_createmainrollingtotals(df_log, file_path)
@@ -247,19 +248,12 @@ def setup_season_values():
 
 def combine_games_to_season():
     print('combine_games_to_season started...')
-    for item in os.listdir(gls.GAMES_DATA_DIR):
-        directory = f'{gls.GAMES_DATA_DIR}{item}/'
-        df_all_logs = pd.DataFrame()
-        if rns.current_season_only and rns.prediction_season not in item:
-            continue
+    for item, directory in season_dirs():
         print(f'Season {item} starting...')
         f_path = f'{gls.SEASON_DATA_DIR}{item}{gls.DEFAULT_CSV_TYPENAME}'
         if not os.path.exists(f_path) or rns.run_from_start_to_finish:
-            for file_name in os.listdir(directory):
-                file_path = os.path.join(directory, file_name)
-                df_log = pd.read_csv(file_path)
-                if not df_log.empty:
-                    df_all_logs = pd.concat([df_all_logs, df_log], ignore_index=True)
+            frames = [pd.read_csv(os.path.join(directory, file_name)) for file_name in os.listdir(directory)]
+            df_all_logs = pd.concat([df_log for df_log in frames if not df_log.empty], ignore_index=True)
             int32_columns = ['WINS', 'LOSSES', 'OFFICIAL1', 'OFFICIAL2', 'MIN', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA',
                               'OREB', 'DREB', 'REB', 'AST', 'STL', 'BLK', 'TO', 'PF', 'PTS', 'OPP_WINS', 'OPP_LOSSES',
                               'PLUS_MINUS', 'TEAM_DNP', 'TEAM_OUT', 'OPP_DNP', 'OPP_OUT', 'DISTANCE', 'OPP_DISTANCE',
@@ -274,7 +268,7 @@ def combine_games_to_season():
             df_all_logs = df_all_logs.groupby('PLAYER_ID').apply(process_player_group)
             df_all_logs.reset_index(drop=True, inplace=True)
             df_all_logs.drop(columns=['change','group','first_out_date','first_in_date','last_known_out'], inplace=True)
-            df_all_logs = df_all_logs[(df_all_logs['COMMENT'].isna()) | (df_all_logs['COMMENT'] == '')]
+            df_all_logs = df_all_logs[df_all_logs['IS_OUT'] == 0]
             df_all_logs = df_all_logs.drop(columns=['COMMENT'])
             if os.path.exists(f_path):
                 print('File already exists removing old file..')
@@ -374,38 +368,29 @@ def set_positions_and_cleanup():
     for item, directory in season_dirs():
         for file_name in os.listdir(directory):
             file_path = os.path.join(directory, file_name)
-            if glu.file_contains_value(file_path, 'NICKNAME'):
-                df_log = pd.read_csv(file_path)
-                df_log.drop(['NICKNAME'], axis=1, inplace=True)
-                df_log.drop(['OFFICIAL3'], axis=1, inplace=True)
+            legacy_columns = [col for col in ['NICKNAME', 'OFFICIAL1NAME', 'OFFICIAL2NAME', 'OFFICIAL3NAME'] if glu.file_contains_value(file_path, col)]
+            needs_position = not glu.file_contains_value(file_path, ',POSITION')
+            if not legacy_columns and not needs_position:
+                continue
+            df_log = pd.read_csv(file_path)
+            if 'NICKNAME' in legacy_columns:
+                df_log.drop(['NICKNAME', 'OFFICIAL3'], axis=1, inplace=True)
                 mask = df_log['COMMENT'].isna() & df_log['START_POSITION'].isna()
                 df_log.loc[mask, 'START_POSITION'] = 'B'
-                df_log.to_csv(file_path, index=False)
-            if glu.file_contains_value(file_path, 'OFFICIAL1NAME'):
-                df_log = pd.read_csv(file_path)
-                df_log.drop(['OFFICIAL1NAME'], axis=1, inplace=True)
-                df_log.to_csv(file_path, index=False)
-            if glu.file_contains_value(file_path, 'OFFICIAL2NAME'):
-                df_log = pd.read_csv(file_path)
-                df_log.drop(['OFFICIAL2NAME'], axis=1, inplace=True)
-                df_log.to_csv(file_path, index=False)
-            if glu.file_contains_value(file_path, 'OFFICIAL3NAME'):
-                df_log = pd.read_csv(file_path)
-                df_log.drop(['OFFICIAL3NAME'], axis=1, inplace=True)
-                df_log.to_csv(file_path, index=False)
-            if not glu.file_contains_value(file_path, ',POSITION'):
-                df_log = pd.read_csv(file_path)
+            df_log.drop([col for col in legacy_columns if col != 'NICKNAME'], axis=1, inplace=True)
+            if needs_position:
                 merged_df = pd.merge(df_log, df_all_details[['PLAYER_ID', 'TEAM_ID', 'SEASON', 'POSITION']],on=['PLAYER_ID', 'TEAM_ID', 'SEASON'], how='left')
                 df_log['POSITION'] = merged_df['POSITION'].str.upper()
                 missing_position_rows = df_log[df_log['POSITION'].isna() | (df_log['POSITION'].str.strip() == '')]
                 if not missing_position_rows.empty:
-                    missing_position_row_comments = missing_position_rows[missing_position_rows['COMMENT'].str.len() < 1]
+                    no_comment = missing_position_rows['COMMENT'].isna() | (missing_position_rows['COMMENT'].astype(str).str.len() < 1)
+                    missing_position_row_comments = missing_position_rows[no_comment]
                     if not missing_position_row_comments.empty:
                         game_id = missing_position_row_comments['GAME_ID'].iloc[0]
                         for _, row in missing_position_row_comments.iterrows():
                             print(f"Missing PLAYER_ID: {row['PLAYER_ID']}")
                         raise ValueError(f"Error Missing POSITIONS in GAME_ID: {game_id}")
-                df_log.to_csv(file_path, index=False)
+            df_log.to_csv(file_path, index=False)
     print('set_positions_and_cleanup completed...')
 
 def set_player_opponents():
@@ -426,36 +411,17 @@ def set_player_opponents():
                     df_log.at[c_indices[0], dest_col] = df_log.at[c_indices[1], src_col]
                     df_log.at[c_indices[1], dest_col] = temp
                 df_log.loc[c_indices, 'MATCHED_OPPONENT'] = 1
-                ###### Match Forwards
-                pos_df = df_log[(df_log['START_POSITION'] == 'F')]
-                pos_df.reset_index(inplace=True)
-                for index, row in pos_df.iterrows():
-                    opp_obj = find_opponent(item=row, pos_df=pos_df)
-                    pos_df = update_opponent(opp_obj=opp_obj, pos_df=pos_df, index=index)
-                df_log.set_index('PLAYER_ID', inplace=True)
-                pos_df.set_index('PLAYER_ID', inplace=True)
-                df_log.update(pos_df)
-                df_log.reset_index(inplace=True)
-                ###### Match Guards
-                pos_df = df_log[(df_log['START_POSITION'] == 'G')]
-                pos_df.reset_index(inplace=True)
-                for index, row in pos_df.iterrows():
-                    opp_obj = find_opponent(item=row, pos_df=pos_df)
-                    pos_df = update_opponent(opp_obj=opp_obj, pos_df=pos_df, index=index)
-                df_log.set_index('PLAYER_ID', inplace=True)
-                pos_df.set_index('PLAYER_ID', inplace=True)
-                df_log.update(pos_df)
-                df_log.reset_index(inplace=True)
-                ###### Match Bench
-                pos_df = df_log[(df_log['START_POSITION'] == 'B')]
-                pos_df.reset_index(inplace=True)
-                for index, row in pos_df.iterrows():
-                    opp_obj = find_opponent(item=row, pos_df=pos_df, benchcheck=True)
-                    pos_df = update_opponent(opp_obj=opp_obj, pos_df=pos_df, index=index)
-                df_log.set_index('PLAYER_ID', inplace=True)
-                pos_df.set_index('PLAYER_ID', inplace=True)
-                df_log.update(pos_df)
-                df_log.reset_index(inplace=True)
+                df_log.insert(0, 'PLAYER_ID', df_log.pop('PLAYER_ID'))
+                ###### Match Forwards, Guards, then Bench
+                for position, benchcheck in (('F', False), ('G', False), ('B', True)):
+                    mask = df_log['START_POSITION'] == position
+                    pos_df = df_log[mask]
+                    pos_df.reset_index(inplace=True)
+                    for index, row in pos_df.iterrows():
+                        opp_obj = find_opponent(item=row, pos_df=pos_df, benchcheck=benchcheck)
+                        pos_df = update_opponent(opp_obj=opp_obj, pos_df=pos_df, index=index)
+                    for col in ['OPP_PLAYER_ID', 'DEF_PTS', 'DEF_AST', 'DEF_REB', 'MATCHED_OPPONENT']:
+                        df_log.loc[mask, col] = pos_df[col].to_numpy()
                 df_log.to_csv(file_path, index=False)
     print('set_player_opponents completed...')
 
@@ -523,10 +489,10 @@ def set_invalid_players():
                             print(f'Issue checking {keyword} not in -> {all_keywords}')
                         else:
                             all_keywords[keyword] += 1
-                        if row['IS_HOME'] == 1:
-                            t1_keywords[keyword] += 1
-                        else:
-                            t2_keywords[keyword] += 1
+                            if row['IS_HOME'] == 1:
+                                t1_keywords[keyword] += 1
+                            else:
+                                t2_keywords[keyword] += 1
                 df_log['TEAM_DNP'] = df_log['TEAM_NAME'].apply(lambda x: t1_keywords['DNP'] if x == t1_keywords['TEAM'] else t2_keywords['DNP'])
                 df_log['TEAM_OUT'] = df_log['TEAM_NAME'].apply(lambda x: t1_keywords['OUT'] if x == t1_keywords['TEAM'] else t2_keywords['OUT'])
                 df_log['OPP_DNP'] = df_log['TEAM_NAME'].apply(lambda x: t2_keywords['DNP'] if x == t1_keywords['TEAM'] else t1_keywords['DNP'])

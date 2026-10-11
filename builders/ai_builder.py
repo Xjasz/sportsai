@@ -52,8 +52,8 @@ def create_all_logs():
                 df_all_logs = pd.concat([df_all_logs, df_log], ignore_index=True)
             print(f'Loaded {file_name}')
             mu.print_memory_usage(df_all_logs, "df_all_logs")
-            df_all_logs.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True, inplace=True)
-            df_all_logs.to_csv(gls.ALL_LOGS, index=False)
+        df_all_logs.sort_values(by=['GAME_DATE', 'GAME_ID'], ascending=True, inplace=True)
+        df_all_logs.to_csv(gls.ALL_LOGS, index=False)
     print('create_all_logs completed...')
 
 def create_games_from_logs():

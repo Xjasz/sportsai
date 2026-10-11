@@ -31,17 +31,20 @@
 ## Season state
 - `rns.prediction_season` is the newest `data/game/<year>` folder, fixed at import: the run that writes the first game file of a new
   season still processes the previous season; the next run picks up the new folder.
-- At a season start the owner sets the season by hand (`rns.prediction_season`, `globals/config.ini` `latest_gamedate`). Game files come only
-  from nba_api and are never copied or hand-edited. Tonight's prediction rows are built from each team's last game file in the
-  prediction-season folder (`prediction_builder.process_directory`), then injuries, lineups and officials are applied on top.
+- At a season start the owner sets the season by hand (override `prediction_season` in `run_settings.py` when the derived value is wrong
+  for the day; `config.ini` `latest_gamedate` advances by itself). Game files come only from nba_api; the pipeline rewrites them in place
+  but they are never copied or hand-edited. Tonight's prediction rows are built from each team's last game file in the prediction-season
+  folder (`prediction_builder.process_directory`), then injuries, lineups and officials are applied on top.
 - Never assume the current season has data, that `data/season/<year>.csv` exists, or that `data/all_partials.csv` is fresh; ask before
   touching season handling, roster assembly or the START_POSITION count checks.
 - Early-season paths that raise today and are left as-is: `prediction_builder.process_directory` on an empty folder (`max(files)` is None) or when
   a team has no game in that folder yet; `generate_data.combine_games_to_season` on an empty folder (`KeyError 'WINS'`).
-- `ai_builder.create_all_logs` rebuilds `all_logs.csv` from every season file on each run and does not write `all_partials.csv` until
-  `data/season/<year>.csv` exists; `remove_initial_games` drops the first 500 rows of each season.
-- Player detail files gain a row for the new season only with `update_active_players_team=True` (refetch) or on a team change; without it
-  the detail merge leaves POSITION NaN and `set_player_opponents` raises "Invalid Position Found".
+- `ai_builder.create_all_logs` takes the fast path (partials plus the current season) only when `all_partials.csv` matches the other season
+  files; otherwise it rebuilds `all_logs.csv` from every season file on each run and writes `all_partials.csv` only once it reaches
+  `data/season/<year>.csv`. `remove_initial_games` drops each season's rows dated before its 501st row.
+- A player's detail file gains a row for the new season only when refetched (`update_active_players_team=True`, a missing file, or
+  `player_fix.py`) after he has played, or on a team change; otherwise the detail merge leaves POSITION NaN and
+  `set_positions_and_cleanup` raises, listing the PLAYER_IDs without a position.
 - `player_fix.py` refetches details for players whose game rows have COMMENT NaN and POSITION NaN; `player_add.py` patches POSITION in
   game files from a hand-kept list. Both are part of the owner's manual routine; do not fold them into the pipeline unasked.
 - Verify offline: extract `data/load/load_data.zip` into the scratchpad (never into `data/`), redirect `gls.*` paths like `smoke_test.py` does,

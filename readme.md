@@ -13,7 +13,7 @@ Sports AI is a machine learning-based project designed to predict sports game ou
 ## Installation
 ### Prerequisites
 Ensure you have the following installed:
-- Python 3.9+
+- Python 3.12 (3.10 is the minimum for nba_api 1.11.4)
 - Virtual environment setup (recommended)
 - Firefox or Google Chrome (for Selenium web scraping)
 
@@ -36,12 +36,12 @@ Ensure you have the following installed:
    ```
    
 4. **Configure Settings**:
-   - Unzip the `data/load/load_data.zip` after cloning project, it contains all games and player information up to late January 2025.
+   - Unzip `data/load/load_data.zip` after cloning; it holds games and player information through 2025-12-01. The zip unpacks to a `load_data/` folder: move its `game/`, `player/`, `season/`, `other/`, `odds/`, `ai/` and `sync/` folders directly under `data/`.
    - `prediction_season` in `globals/run_settings.py` is the newest season folder under `data/game/` (date-based fallback); override it there if needed.  When running the processes the prediction will automatically attempt to run predictions for the current day.
    - Edit the `use_database` in `globals/run_settings.py` and set it to `True` if you want to generate the tables the run `globals/create_sql_tables.py` to generate the initial tables.
    - Set `current_season_only` in `globals/run_settings.py` to `False` for the first run so every season file is generated, then back to `True` (the default) for daily runs.
-   - There is an automated process that uses Selenium and retrieves extra information from fanduel.  If you decide to use the database then either run `active/odds_service.py` separately as a service each day or run it once before the 3rd process to fetch the latest Over/Under odds for Points, Assists, and Rebounds from Fanduel. Its currently set to use Firefox but can easily be changed to use another Browser like Chrome if needed.
-   - The ENVIRONMENT VARIABLES in `globals/global_settings.py` need to be changed to point to your database if `use_database` in `globals/run_settings.py` is set to `True`.
+   - `active/odds_service.py` polls FanDuel over HTTP (no browser) and writes the Over/Under lines for Points, Assists and Rebounds to MySQL. If you use the database, run it as a service each day or once before the 3rd process.
+   - Set the environment variables `globals/global_settings.py` reads (`SPORTSAI_DBSERVER`, `SPORTSAI_DBNAME`, `SPORTSAI_DBUSER`, `SPORTSAI_DBPASS`; `BROWSER_PROFILE_DIR`, `BROWSER_EXE_LOC`, `GECKO_EXE_LOC` for Selenium) if `use_database` in `globals/run_settings.py` is set to `True`.
    - To speed up model training with an NVIDIA GPU you should install PyTorch from `https://pytorch.org/` and select the correct CUDA version to use.
 
 5. **Final Settings**:

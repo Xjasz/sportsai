@@ -74,19 +74,18 @@ def extract_players(game_log_dir):
     entries = os.listdir(game_log_dir)
     file_count = sum(os.path.isfile(os.path.join(game_log_dir, entry)) for entry in entries)
     print(f"Check files in directory {game_log_dir} -> file_count: {file_count}")
-    player_df = pd.DataFrame(columns=['PLAYER_ID', 'PLAYER_NAME'])
-    player_df['PLAYER_NAME'] = player_df['PLAYER_NAME'].apply(unidecode)
+    frames = []
     for file_name in os.listdir(game_log_dir):
         directory = f'{gls.GAMES_DATA_DIR}{file_name}'
         if not os.path.isdir(directory):
             file_path = os.path.join(game_log_dir, file_name)
-            df_log = pd.read_csv(file_path)
+            df_log = pd.read_csv(file_path, usecols=['PLAYER_ID', 'PLAYER_NAME', 'COMMENT'])
             df_log['COMMENT'] = df_log['COMMENT'].astype(str)
             # print(f"Check path players in path -> {file_path}")
-            df_filtered = df_log[~df_log['COMMENT'].str.contains('DNP|OUT', na=False, regex=True)]
-            unique_players = df_filtered[['PLAYER_ID', 'PLAYER_NAME']].drop_duplicates()
-            unique_players['PLAYER_NAME'] = unique_players['PLAYER_NAME'].apply(unidecode)
-            player_df = pd.merge(player_df, unique_players, on=['PLAYER_ID', 'PLAYER_NAME'], how='outer')
+            frames.append(df_log.loc[~df_log['COMMENT'].str.contains('DNP|OUT', na=False, regex=True), ['PLAYER_ID', 'PLAYER_NAME']])
+    player_df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=['PLAYER_ID', 'PLAYER_NAME'])
+    player_df['PLAYER_NAME'] = player_df['PLAYER_NAME'].apply(unidecode)
+    player_df = player_df.drop_duplicates(ignore_index=True)
     print(f"Total Players Loaded:{len(player_df)}")
     print(f"Players :{player_df}")
     return player_df
@@ -103,8 +102,8 @@ def fetch_and_save_player_detail(player_item, current_all_players, force_update=
     if det_df is None or (rns.update_active_players_team and is_active) or force_update:
         time.sleep(2)
         print(f"Fetching detail for Player ID:{pl_id}  |  PlayerName: {pl_name}")
-        player_details = commonplayerinfo.CommonPlayerInfo(player_id=pl_id, league_id_nullable='00').get_data_frames()[0]
-        career_stats = playercareerstats.PlayerCareerStats(player_id=pl_id, league_id_nullable='00').get_data_frames()[0]
+        player_details = commonplayerinfo.CommonPlayerInfo(player_id=pl_id, league_id_nullable=gls.NBAAPI_LEAGUE_ID).get_data_frames()[0]
+        career_stats = playercareerstats.PlayerCareerStats(player_id=pl_id, league_id_nullable=gls.NBAAPI_LEAGUE_ID).get_data_frames()[0]
         combined_data = pd.merge(career_stats, player_details, how='left', left_on='PLAYER_ID', right_on='PERSON_ID', validate='many_to_many')
         combined_data = combined_data[combined_data['TEAM_ID_x'] != 0]
         combined_data = combined_data[combined_data['SEASON_ID'] >= '2005-06']
@@ -184,7 +183,7 @@ def removing_invalid_player(game_log_dir, player_id):
 
 def create_player_details():
     print('create_player_details...')
-    current_all_players = commonallplayers.CommonAllPlayers(is_only_current_season='1', league_id='00').get_data_frames()[0]
+    current_all_players = commonallplayers.CommonAllPlayers(is_only_current_season='1', league_id=gls.NBAAPI_LEAGUE_ID).get_data_frames()[0]
     current_season_dir = f'{gls.GAMES_DATA_DIR}{rns.prediction_season}/'
     player_df = extract_players(current_season_dir)
     player_df = mu.playername_log_to_detail(player_df)

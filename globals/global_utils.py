@@ -185,11 +185,8 @@ def print_memory_usage(df, df_name):
     print(f"Memory usage of {df_name}: {memory} bytes")
 
 def load_player_details():
-    df_all_details = pd.DataFrame()
-    for filename in sorted(os.listdir(gls.PLAYER_DETAIL_DIR)):
-        df_detail = pd.read_csv(os.path.join(gls.PLAYER_DETAIL_DIR, filename))
-        if not df_detail.empty:
-            df_all_details = pd.concat([df_all_details, df_detail])
+    frames = [pd.read_csv(os.path.join(gls.PLAYER_DETAIL_DIR, filename)) for filename in sorted(os.listdir(gls.PLAYER_DETAIL_DIR))]
+    df_all_details = pd.concat([df_detail for df_detail in frames if not df_detail.empty])
     df_all_details.sort_values(by=['SEASON', 'TEAM'], ascending=True, inplace=True)
     return df_all_details.drop_duplicates(subset=['PLAYER_ID', 'TEAM_ID', 'SEASON'], keep='last')
 

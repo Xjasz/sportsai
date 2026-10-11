@@ -14,6 +14,8 @@ def accuracy_flag(df, target_col):
 
 def generate_files(linked_df, eval_loss, target_col):
     mnu.debug_print("Running generate_files....",0)
+    for directory in (gls.PRED_OUTPUT_DIR, gls.PREVIOUS_PRED_OUTPUT_DIR, os.path.dirname(gls.SYNC_SEASON_FILE)):
+        os.makedirs(directory, exist_ok=True)
     dfalter = linked_df.copy()
     dfalter['Prediction_Accuracy'] = accuracy_flag(dfalter, target_col)
     dfalter = dfalter.sort_values(by=['PLAYER_ID', 'GAME_DATE'])
@@ -22,31 +24,16 @@ def generate_files(linked_df, eval_loss, target_col):
     dfalter['RT_PCT'] = (dfalter['RT_P'] / dfalter['Game_Count']).round(2)
     dfalter.to_csv(gls.dfaltersfile, index=False)
     mnu.debug_print("Creating dfalter ended...",0)
-    df_rt3_alter = dfalter.copy()
-    df_rt3_alter['RT3_Prediction_Accuracy'] = accuracy_flag(df_rt3_alter, target_col)
-    df_rt3_alter = df_rt3_alter.sort_values(by=['PLAYER_ID', 'GAME_DATE'])
-    df_rt3_alter['RT3G_Accuracy_Sum'] = df_rt3_alter.groupby(['PLAYER_ID', 'SEASON'])['RT3_Prediction_Accuracy'].rolling(window=3, min_periods=1).sum().reset_index(level=[0, 1], drop=True)
-    df_rt3_alter['RT3G_Accuracy_Percentage'] = (df_rt3_alter['RT3G_Accuracy_Sum'] / 3).round(2)
-    df_rt3_alter.to_csv(gls.df_rt3_alterfile, index=False)
-    mnu.debug_print("Creating df_rt3_alterfile ended...",0)
-    df_rt5_alter = df_rt3_alter.copy()
-    df_rt5_alter['RT5_Prediction_Accuracy'] = accuracy_flag(df_rt5_alter, target_col)
-    df_rt5_alter = df_rt5_alter.sort_values(by=['PLAYER_ID', 'GAME_DATE'])
-    df_rt5_alter['RT5G_Accuracy_Sum'] = df_rt5_alter.groupby(['PLAYER_ID', 'SEASON'])['RT5_Prediction_Accuracy'].rolling(window=5, min_periods=1).sum().reset_index(level=[0, 1], drop=True)
-    df_rt5_alter['RT5G_Accuracy_Percentage'] = (df_rt5_alter['RT5G_Accuracy_Sum'] / 5).round(2)
-    df_rt5_alter.to_csv(gls.df_rt5_alterfile, index=False)
-    mnu.debug_print("Creating df_rt5_alterfile ended...",0)
-    df_rt9_alter = df_rt5_alter.copy()
-    df_rt9_alter['RT9_Prediction_Accuracy'] = accuracy_flag(df_rt9_alter, target_col)
-    df_rt9_alter = df_rt9_alter.sort_values(by=['PLAYER_ID', 'GAME_DATE'])
-    df_rt9_alter['RT9G_Accuracy_Sum'] = df_rt9_alter.groupby(['PLAYER_ID', 'SEASON'])['RT9_Prediction_Accuracy'].rolling(window=9, min_periods=1).sum().reset_index(level=[0, 1], drop=True)
-    df_rt9_alter['RT9G_Accuracy_Percentage'] = (df_rt9_alter['RT9G_Accuracy_Sum'] / 9).round(2)
-    df_rt9_alter.to_csv(gls.df_rt9_alterfile, index=False)
-    mnu.debug_print("Creating df_rt9_alterfile ended...",0)
-    df = df_rt9_alter
+    df = dfalter
+    for n, path in ((3, gls.df_rt3_alterfile), (5, gls.df_rt5_alterfile), (9, gls.df_rt9_alterfile)):
+        df[f'RT{n}_Prediction_Accuracy'] = df['Prediction_Accuracy']
+        df[f'RT{n}G_Accuracy_Sum'] = df.groupby(['PLAYER_ID', 'SEASON'])[f'RT{n}_Prediction_Accuracy'].rolling(window=n, min_periods=1).sum().reset_index(level=[0, 1], drop=True)
+        df[f'RT{n}G_Accuracy_Percentage'] = (df[f'RT{n}G_Accuracy_Sum'] / n).round(2)
+        df.to_csv(path, index=False)
+        mnu.debug_print(f"Creating df_rt{n}_alterfile ended...",0)
     df['DIFF_AVG'] = abs(df[f'AVG_{target_col}'] - df[f'{target_col}_PRED'])
     df['DIFF_ACT'] = abs(df[target_col] - df[f'{target_col}_PRED'])
-    df['CORRECT'] = accuracy_flag(df, target_col)
+    df['CORRECT'] = df['Prediction_Accuracy']
     dfs_sorted = df.sort_values(by=['DIFF_AVG', 'DIFF_ACT'], ascending=[False, True])
     drop_cols = ['INDEX', 'Game_Count', 'RT_P', 'Prediction_Accuracy', 'RT3_Prediction_Accuracy',
                  'RT5_Prediction_Accuracy', 'RT9_Prediction_Accuracy', 'RT3G_Accuracy_Sum',
@@ -72,9 +59,7 @@ def generate_files(linked_df, eval_loss, target_col):
             dfs_sorted[col] = dfs_sorted[col].apply(mnu.format_float)
     dfs_sorted.to_csv(gls.dfs_sortedfile, index=False)
     mnu.debug_print(f"Creating dfs_sorted ended... size {len(dfs_sorted)}",0)
-    column_spaces = [4, 10, 15, 15, 25]
-    while len(column_spaces) != dfs_sorted.shape[1]:
-        column_spaces.append(10)
+    column_spaces = [4, 10, 15, 15, 25] + [10] * (dfs_sorted.shape[1] - 5)
     formatted_string = mnu.format_csv(dfs_sorted, column_spaces)
     with open(gls.dfs_sorted_cleanedfile, 'w', encoding='utf-8') as file:
         file.write(formatted_string)
@@ -90,14 +75,8 @@ def generate_files(linked_df, eval_loss, target_col):
     fin_df.to_csv(gls.fin_datafile, index=False)
     mnu.debug_print("Creating fin_data ended...",0)
     fin_df_parse = pd.read_csv(gls.fin_datafile)
-    rtz_tgt_col = fin_df_parse.pop(f'RTZ_{target_col}')
-    fin_df_parse.insert(6, f'RTZ_{target_col}', rtz_tgt_col)
-    rt3_tgt_col = fin_df_parse.pop(f'RT3_{target_col}')
-    fin_df_parse.insert(7, f'RT3_{target_col}', rt3_tgt_col)
-    rt5_tgt_col = fin_df_parse.pop(f'RT5_{target_col}')
-    fin_df_parse.insert(8, f'RT5_{target_col}', rt5_tgt_col)
-    rt9_tgt_col = fin_df_parse.pop(f'RT9_{target_col}')
-    fin_df_parse.insert(9, f'RT9_{target_col}', rt9_tgt_col)
+    for pos, prefix in enumerate(('RTZ', 'RT3', 'RT5', 'RT9'), 6):
+        fin_df_parse.insert(pos, f'{prefix}_{target_col}', fin_df_parse.pop(f'{prefix}_{target_col}'))
     fin_df_parse = fin_df_parse.sort_values(by=['GAME_DATE', 'GAME_ID'])
 
     fin_df_parse.to_csv(gls.fin_data_parsefile, index=False)
@@ -107,7 +86,6 @@ def generate_files(linked_df, eval_loss, target_col):
     df_current_season.to_csv(gls.CURRENT_SEASON_PRED_FULLPATH, index=False)
     df_current_season.to_csv(gls.SYNC_SEASON_FILE, index=False)
     mnu.debug_print('Creating s_season ended...',0)
-    os.makedirs(gls.PRED_OUTPUT_DIR, exist_ok=True)
     fin_df_parse = pd.read_csv(gls.fin_data_parsefile)
     fin_df_parse_group = fin_df_parse[fin_df_parse['GAME_DATE'] == rns.prediction_date]
     sorted_group = fin_df_parse_group.sort_values(by=['GAME_DATE', 'GAME_ID','RT_PCT'], ascending=[True,True,False])
