@@ -4,6 +4,7 @@ import shutil
 import datetime
 import pandas as pd
 import time
+import pytz
 import globals.global_settings as gls
 import globals.run_settings as rns
 from webevents import get_latest_events as gle, get_latest_injurys as gli
@@ -12,12 +13,13 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 print('Starting...')
-current_time = datetime.datetime.now()
+current_time = datetime.datetime.now(pytz.timezone('US/Eastern')).replace(tzinfo=None)
 formatted_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 service = None
@@ -59,8 +61,12 @@ def fetch_and_process_event_data_with_selenium(ex_data):
                 view_raw_button = wait.until(EC.element_to_be_clickable((By.ID, 'rawdata-tab')))
                 view_raw_button.click()
             time.sleep(2)
+            try:
+                wait.until(EC.presence_of_element_located((By.TAG_NAME, 'pre')))
+            except TimeoutException:
+                print(f'No odds page for event ID {event_id}, skipping')
+                continue
             soup = BeautifulSoup(driver.page_source, 'html.parser')
-            wait.until(EC.presence_of_element_located((By.TAG_NAME, 'pre')))
             pre_tag = soup.find('pre')
             if pre_tag:
                 json_string = pre_tag.text
@@ -98,6 +104,9 @@ extracted_data = fetch_and_process_event_data_with_selenium(evt_data)
 df_market = pd.DataFrame(extracted_data)
 df_market.to_csv(gls.CURRENT_ODDS_FULLPATH, index=False)
 print(f"CSV file '{gls.CURRENT_ODDS_FULLPATH}' has been created for All Games")
+if df_market.empty:
+    print('No upcoming odds found...')
+    exit()
 
 csv_df = df_market.copy()
 # csv_df['runnerNameClean'] = csv_df['runnerName'].str.replace(' Over', '').str.replace(' Under', '').str.strip()

@@ -132,9 +132,9 @@ def find_sportsbook_games():
             view_raw_button = wait.until(EC.element_to_be_clickable((By.ID, 'rawdata-tab')))
             view_raw_button.click()
         time.sleep(2)
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
         try:
             wait.until(EC.presence_of_element_located((By.TAG_NAME, 'pre')))
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
             pre_tag = soup.find('pre')
             if pre_tag:
                 json_string = pre_tag.text
@@ -150,7 +150,10 @@ def find_sportsbook_games():
                         away_short = gls.TEAM_TOSHORT_MAPPER.get(away_team, None)
                         home_short = gls.TEAM_TOSHORT_MAPPER.get(home_team, None)
                         opn_date = event_info['openDate']
-                        formatdate = datetime.datetime.strptime(opn_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+                        try:
+                            formatdate = datetime.datetime.strptime(opn_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+                        except ValueError:
+                            formatdate = datetime.datetime.strptime(opn_date, "%Y-%m-%dT%H:%M:%SZ")
                         given_time_utc = utc_timezone.localize(formatdate)
                         given_time_est = given_time_utc.astimezone(est_timezone).replace(tzinfo=None)
                         time_str = given_time_est.strftime('%H:%M')

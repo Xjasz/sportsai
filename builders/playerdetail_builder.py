@@ -76,8 +76,7 @@ def extract_players(game_log_dir):
     print(f"Check files in directory {game_log_dir} -> file_count: {file_count}")
     frames = []
     for file_name in os.listdir(game_log_dir):
-        directory = f'{gls.GAMES_DATA_DIR}{file_name}'
-        if not os.path.isdir(directory):
+        if not os.path.isdir(os.path.join(game_log_dir, file_name)):
             file_path = os.path.join(game_log_dir, file_name)
             df_log = pd.read_csv(file_path, usecols=['PLAYER_ID', 'PLAYER_NAME', 'COMMENT'])
             df_log['COMMENT'] = df_log['COMMENT'].astype(str)
@@ -171,8 +170,7 @@ def removing_invalid_player(game_log_dir, player_id):
     print('removing_invalid_player...')
     print(f"Check directory {game_log_dir} -> for PlayerID: ({player_id})")
     for file_name in os.listdir(game_log_dir):
-        directory = f'{gls.GAMES_DATA_DIR}{file_name}'
-        if not os.path.isdir(directory):
+        if not os.path.isdir(os.path.join(game_log_dir, file_name)):
             file_path = os.path.join(game_log_dir, file_name)
             df_log = pd.read_csv(file_path)
             player_exists = (df_log['PLAYER_ID'] == int(player_id)).any()

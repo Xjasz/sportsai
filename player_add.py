@@ -3,6 +3,7 @@ from builders import playerdetail_builder as pdb  # noqa: F401
 from nba_api.stats.endpoints import commonallplayers  # noqa: F401
 import pandas as pd
 from pathlib import Path
+import globals.global_settings as gls
 
 # PLAYER ONLY
 # player_id = '1628368'
@@ -67,7 +68,7 @@ players = [
 
 
 # player_id = '1628470'
-directory = Path("data/game/2024")  # relative path from script location
+directory = Path(gls.GAMES_DATA_DIR) / '2024'
 total_count = 0
 
 for player_id, player_name, position in players:
