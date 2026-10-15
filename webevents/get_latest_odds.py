@@ -4,6 +4,7 @@ import shutil
 import datetime
 import pandas as pd
 import time
+import pytz
 import globals.global_settings as gls
 import globals.run_settings as rns
 from webevents import get_latest_events as gle, get_latest_injurys as gli
@@ -17,7 +18,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 print('Starting...')
-current_time = datetime.datetime.now()
+current_time = datetime.datetime.now(pytz.timezone('US/Eastern')).replace(tzinfo=None)
 formatted_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 service = None
@@ -59,8 +60,8 @@ def fetch_and_process_event_data_with_selenium(ex_data):
                 view_raw_button = wait.until(EC.element_to_be_clickable((By.ID, 'rawdata-tab')))
                 view_raw_button.click()
             time.sleep(2)
-            soup = BeautifulSoup(driver.page_source, 'html.parser')
             wait.until(EC.presence_of_element_located((By.TAG_NAME, 'pre')))
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
             pre_tag = soup.find('pre')
             if pre_tag:
                 json_string = pre_tag.text

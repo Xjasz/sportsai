@@ -221,8 +221,8 @@ def clear_prediction_games():
                 os.remove(full_path)
                 deleted_count += 1
                 print(f"Deleted {fname}")
-        except Exception:
-            pass
+        except Exception as ex:
+            print(f"Could not check {full_path}: {ex}")
     print(f"Finished. Deleted {deleted_count} files.")
 
 def create_game_logs_start():
